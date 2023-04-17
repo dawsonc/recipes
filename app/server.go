@@ -2,10 +2,11 @@ package main
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
-	recipes "github.com/dawsonc/recipes/src"
+	"github.com/dawsonc/recipes/src/recipes"
 )
 
 type PageData struct {
@@ -14,52 +15,22 @@ type PageData struct {
 }
 
 func main() {
-	// Make a router and load the HTML templates
+	// Make a router
 	router := gin.Default()
-	router.LoadHTMLGlob("templates/*.html")
 
-	// Connect to a local MongoDB instance
-	client, err := recipes.ConnectToMongoDB("mongodb://localhost:27017")
+	// Create the recipes manager and connect to MongoDB
+	recipe_manager, err := recipes.CreateMongoRecipeManager("mongodb://localhost:27017", "recipes", "recipes")
 	if err != nil {
 		panic(err)
 	}
 
-	// The homepage should list all recipes
-	router.GET("/", func(c *gin.Context) {
-		// Get all recipes from the database
-		recipes, err := recipes.GetAllRecipes(client, "recipes", "recipes")
-		if err != nil {
-			// Display an error page
-			c.HTML(http.StatusInternalServerError, "error.html", nil)
-		}
-
-		// Get a slice of all unique tags
-		tags := make(map[string]bool)
-		for _, recipe := range recipes {
-			for _, tag := range recipe.Tags {
-				tags[tag] = true
-			}
-		}
-
-		data := PageData{
-			Recipes: recipes,
-			Tags:    tags,
-		}
-		c.HTML(http.StatusOK, "index.html", data)
-	})
-
-	// A page for creating new recipes
-	router.GET("/add_recipe", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "new_recipe.html", nil)
-	})
-
-	// Define a REST API for recipes
+	// Provide a RESTful API for recipes
 	recipesAPI := router.Group("/api/recipes")
 	{
 		// GET /api/recipes - get all recipes
 		recipesAPI.GET("/", func(c *gin.Context) {
 			// Get all recipes from the database
-			recipes, err := recipes.GetAllRecipes(client, "recipes", "recipes")
+			recipes, err := recipe_manager.GetAllRecipes()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
@@ -68,13 +39,13 @@ func main() {
 			c.JSON(http.StatusOK, recipes)
 		})
 
-		// GET /api/recipes/:id - get a recipe by ID
-		recipesAPI.GET("/:id", func(c *gin.Context) {
+		// GET /api/recipes/id/:id - get a recipe by ID
+		recipesAPI.GET("/id/:id", func(c *gin.Context) {
 			// Get the ID from the URL
 			id := c.Param("id")
 
 			// Get the recipe from the database
-			recipe, err := recipes.GetRecipeByID(client, "recipes", "recipes", id)
+			recipe, err := recipe_manager.GetRecipeByID(id)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
@@ -83,13 +54,14 @@ func main() {
 			c.JSON(http.StatusOK, recipe)
 		})
 
-		// GET /api/recipes/tags/:tag - get all recipes with a given tag
-		recipesAPI.GET("/tags/:tag", func(c *gin.Context) {
-			// Get the tag from the URL
-			tag := c.Param("tag")
+		// GET /api/recipes/tags/:tag - get all recipes with a given list of comma-separated tags
+		recipesAPI.GET("/tags/:tags", func(c *gin.Context) {
+			// Get the tag from the URL, splitting along commas
+			tags := c.Param("tags")
+			tag_list := strings.Split(tags, ",")
 
 			// Get all recipes from the database
-			recipes, err := recipes.GetRecipesByTag(client, "recipes", "recipes", tag)
+			recipes, err := recipe_manager.GetRecipesByTags(tag_list)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
@@ -108,10 +80,7 @@ func main() {
 			}
 
 			// Insert the recipe into the database
-			if err := recipes.InsertRecipe(client, "recipes", "recipes", recipe); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
+			// TODO
 
 			c.JSON(http.StatusOK, gin.H{"message": "Recipe created successfully"})
 		})
@@ -128,11 +97,10 @@ func main() {
 				return
 			}
 
+			// TODO make update take a string ID
+
 			// Update the recipe in the database
-			if err := recipes.UpdateRecipe(client, "recipes", "recipes", id, recipe); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
+			// TODO
 
 			c.JSON(http.StatusOK, gin.H{"message": "Recipe updated successfully"})
 		})
@@ -143,10 +111,7 @@ func main() {
 			id := c.Param("id")
 
 			// Delete the recipe from the database
-			if err := recipes.DeleteRecipe(client, "recipes", "recipes", id); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
+			// TODO
 
 			c.JSON(http.StatusOK, gin.H{"message": "Recipe deleted successfully"})
 		})

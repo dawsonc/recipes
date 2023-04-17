@@ -148,10 +148,8 @@
                 .then(data => console.log(data))
                 .catch(error => console.error(error));
             
-            // redirect to the homepage and force reload
-            window.location.href = "/";
-            window.location.reload(true);
-            window.location.href = "/";
+            // redirect to the homepage
+            window.location.replace("/");
         });
 
     </script>
