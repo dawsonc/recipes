@@ -32,8 +32,18 @@ type Comments struct {
 
 // Define functions for operating on recipes
 
+// SetID sets the ID of a recipe
+func (recipe *Recipe) SetID(id string) error {
+	new_id, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	recipe.ID = new_id
+	return nil
+}
+
 // AddTagToRecipe adds a tag to a recipe if it is not already present
-func AddTagToRecipe(recipe *Recipe, tag string) {
+func (recipe *Recipe) AddTagToRecipe(tag string) {
 	// Only add the tag if it is not in the list already
 	for _, t := range recipe.Tags {
 		if t == tag {
@@ -46,7 +56,7 @@ func AddTagToRecipe(recipe *Recipe, tag string) {
 }
 
 // RemoveTagFromRecipe removes a tag from a recipe if it is present
-func RemoveTagFromRecipe(recipe *Recipe, tag string) {
+func (recipe *Recipe) RemoveTagFromRecipe(tag string) {
 	for i, t := range recipe.Tags {
 		if t == tag {
 			recipe.Tags = append(recipe.Tags[:i], recipe.Tags[i+1:]...)

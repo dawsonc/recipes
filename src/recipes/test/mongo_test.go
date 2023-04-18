@@ -372,3 +372,63 @@ func TestSearchRecipes(t *testing.T) {
 		t.Fatalf("Test recipe 1 was not retrieved (query %v, tags %v)", query, tags)
 	}
 }
+
+// TestGetTags tests the GetTags function
+func TestGetTags(t *testing.T) {
+	// Set up the test database
+	err := setupTestDB()
+	if err != nil {
+		t.Fatalf("Failed to set up test database: %v", err)
+	}
+	defer teardownTestDB()
+
+	// Create a new recipe manager
+	recipeManager, err := recipes.CreateMongoRecipeManager(testURI, testDBName, "recipes")
+	if err != nil {
+		t.Fatalf("Failed to create recipe manager: %v", err)
+	}
+
+	// Add the first test recipe
+	_, err = recipeManager.AddRecipe(testRecipe1)
+	if err != nil {
+		t.Fatalf("Failed to add test recipe: %v", err)
+	}
+
+	// Add the second test recipe
+	_, err = recipeManager.AddRecipe(testRecipe2)
+	if err != nil {
+		t.Fatalf("Failed to add test recipe: %v", err)
+	}
+
+	// Get the tags
+	tags, err := recipeManager.GetTags()
+	if err != nil {
+		t.Fatalf("Failed to get tags: %v", err)
+	}
+
+	// There should be 3 tags
+	if len(tags) != 3 {
+		t.Fatalf("Incorrect number of tags retrieved: expected %v, got %v", 3, len(tags))
+	}
+
+	// The tags "Test Tag 1", "Test Tag 2", and "Test Tag 3" should all be in this slice
+	if !isMember(tags, "Test Tag 1") {
+		t.Fatalf("Tag \"Test Tag 1\" was not retrieved, got %v", tags)
+	}
+	if !isMember(tags, "Test Tag 2") {
+		t.Fatalf("Tag \"Test Tag 2\" was not retrieved, got %v", tags)
+	}
+	if !isMember(tags, "Test Tag 3") {
+		t.Fatalf("Tag \"Test Tag 2\" was not retrieved, got %v", tags)
+	}
+}
+
+// isMember returns true if the given value is in the given slice
+func isMember(slice []string, value string) bool {
+	for _, item := range slice {
+		if item == value {
+			return true
+		}
+	}
+	return false
+}

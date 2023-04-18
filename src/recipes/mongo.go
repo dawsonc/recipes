@@ -199,6 +199,48 @@ func (m *MongoRecipeManager) GetRecipesByTags(tags []string) ([]Recipe, error) {
 	return recipes, nil
 }
 
+// GetTags returns all tags in the recipe manager
+func (m *MongoRecipeManager) GetTags() ([]string, error) {
+	// Get the collection handle
+	collection := m.client.Database(m.dbName).Collection(m.collectionName)
+
+	// Use a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Find all documents in the collection
+	cursor, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	// Decode each document into a Recipe object and collect tags as keys in a map
+	tags := make(map[string]bool)
+	for cursor.Next(ctx) {
+		var recipe Recipe
+		if err := cursor.Decode(&recipe); err != nil {
+			return nil, err
+		}
+
+		for _, tag := range recipe.Tags {
+			tags[tag] = true
+		}
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	// Convert to slice
+	var return_tags []string
+	for tag := range tags {
+		return_tags = append(return_tags, tag)
+	}
+
+	return return_tags, nil
+}
+
 // SearchRecipes returns all recipes that match the given query string and tags
 func (m *MongoRecipeManager) SearchRecipes(query string, tags []string) ([]Recipe, error) {
 	// Get the collection handle

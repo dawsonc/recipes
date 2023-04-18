@@ -12,7 +12,7 @@ func TestAddTagToRecipe(t *testing.T) {
 
 	// Add a tag to the recipe
 	new_tag := "new_tag"
-	recipes.AddTagToRecipe(&recipe, new_tag)
+	recipe.AddTagToRecipe(new_tag)
 
 	// Make sure the new tag was added
 	found := false
@@ -27,7 +27,7 @@ func TestAddTagToRecipe(t *testing.T) {
 	}
 
 	// Add the tag again (nothing should change)
-	recipes.AddTagToRecipe(&recipe, new_tag)
+	recipe.AddTagToRecipe(new_tag)
 
 	// Make sure the new tag was not added twice
 	count := 0
@@ -45,7 +45,7 @@ func TestRemoveTagFromRecipe(t *testing.T) {
 
 	// Remove a tag from the recipe
 	tag_to_remove := "Test Tag 1"
-	recipes.RemoveTagFromRecipe(&recipe, tag_to_remove)
+	recipe.RemoveTagFromRecipe(tag_to_remove)
 
 	// Make sure the tag was removed
 	for _, tag := range recipe.Tags {
@@ -55,7 +55,7 @@ func TestRemoveTagFromRecipe(t *testing.T) {
 	}
 
 	// Remove the tag again (nothing should change)
-	recipes.RemoveTagFromRecipe(&recipe, tag_to_remove)
+	recipe.RemoveTagFromRecipe(tag_to_remove)
 }
 
 // TestMergeIngredientQuantities tests the MergeIngredientQuantities function

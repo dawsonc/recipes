@@ -14,6 +14,8 @@ type RecipeManager interface {
 	GetRecipeByID(id string) (Recipe, error)
 	// GetRecipesByTags returns all recipes with the given tags
 	GetRecipesByTags(tags []string) ([]Recipe, error)
+	// GetTags returns all tags in the recipe manager
+	GetTags() ([]string, error)
 	// SearchRecipes returns all recipes that match the given query string and tags
 	SearchRecipes(query string, tags []string) ([]Recipe, error)
 }
