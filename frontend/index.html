@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recipe List</title>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <!-- React JS -->
+    <script crossorigin="anonymous"
+        src="https://cdnjs.cloudflare.com/ajax/libs/react/16.8.6/umd/react.production.min.js"></script>
+    <script crossorigin="anonymous"
+        src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/16.8.6/umd/react-dom.production.min.js"></script>
+
+    <!-- Babel NOT FOR PROD -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+</head>
+
+<body>
+    <div class="container mt-3 mb-3">
+        <h1 class="mb-3">Recipe List</h1>
+
+        <div id="recipeLibrary" class="row">
+            <div id="recipeBrowser" class="col-md-6">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" placeholder="Search for a recipe" aria-
+                        label="Search for a recipe" aria-describedby="button-addon2">
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="button" id="button-addon2">Search</button>
+                    </div>
+                </div>
+
+                <div id="tagList" class="mb-3"></div>
+
+                <!-- Add a button for adding recipes -->
+                <button type="button" class="btn btn-primary col-md-12 mb-3">+ Add Recipe</button>
+
+                <div id="recipeList" style="height: 800px;"></div>
+            </div>
+            <div id="recipeFocusPane" class="col-md-6 border rounded"></div>
+        </div>
+    </div>
+
+    <!-- RecipeList component -->
+    <script type="text/babel">
+        const comment = { "comment": "This is a comment", "author": "Dawson", "date": "2020-01-01" }
+        const recipeList = [
+            {
+                name: "Spaghetti",
+                tags: ["pasta", "italian"],
+                ingredients: [
+                    {
+                        name: "Spaghetti",
+                        quantity: "1 box",
+                    },
+                    {
+                        name: "Tomato Sauce",
+                        quantity: "1 can",
+                    },
+                ],
+                instructions: [
+                    "Cook the spaghetti",
+                    "Add the tomato sauce",
+                ],
+                comments: [comment, comment, comment, comment],
+            },
+            {
+                name: "Taco Salad",
+                tags: ["mexican", "salad"],
+                ingredients: [
+                    {
+                        name: "Tortilla Chips",
+                        quantity: "1 bag",
+                    },
+                    {
+                        name: "Taco Meat",
+                        quantity: "1 lb",
+                    },
+                    {
+                        name: "Cheese",
+                        quantity: "1 cup",
+                    },
+                ],
+                instructions: [
+                    "Cook the taco meat",
+                    "Mix the taco meat with the chips and cheese",
+                ],
+                comments: [comment, comment, comment, comment],
+            },
+            {
+                name: "Omelette",
+                tags: ["breakfast", "eggs"],
+                ingredients: [
+                    {
+                        name: "Eggs",
+                        quantity: "3",
+                    },
+                    {
+                        name: "Milk",
+                        quantity: "1 cup",
+                    },
+                    {
+                        name: "Cheese",
+                        quantity: "1 cup",
+                    },
+                ],
+                instructions: [
+                    "Mix the eggs, milk, and cheese",
+                    "Cook the mixture in a pan",
+                ],
+                comments: [comment, comment, comment, comment],
+            },
+            {
+                name: "Really long long long recipe name lorem ipsum dolor sit amet",
+                tags: ["breakfast", "eggs", "many other", "tags as well"],
+                ingredients: [
+                    {
+                        name: "Eggs",
+                        quantity: "3",
+                    },
+                    {
+                        name: "Milk",
+                        quantity: "1 cup",
+                    },
+                    {
+                        name: "Cheese",
+                        quantity: "1 cup",
+                    },
+                ],
+                instructions: [
+                    "Mix the eggs, milk, and cheese",
+                    "Cook the mixture in a pan",
+                ],
+                comments: [comment, comment, comment, comment],
+            },
+        ];
+        const tags = ["pasta", "italian", "mexican", "salad", "breakfast", "eggs"];
+
+        function RecipeRow({ name, tags }) {
+            return <tr>
+                <td>{name}</td>
+                <td>
+                    {tags.map((tag) => (
+                        <span
+                            key={tag}
+                            className="badge badge-pill badge-light mr-1"
+                        >
+                            {tag}
+                        </span>
+                    ))}
+                </td>
+            </tr>
+        }
+
+        function RecipeList(properties) {
+            return <table class="table table-hover table-responsive h-100">
+                <tbody>
+                    {properties.recipes.map((recipe) => (
+                        <RecipeRow
+                            key={recipe.name}
+                            name={recipe.name}
+                            tags={recipe.tags}
+                        />
+                    ))}
+                </tbody>
+            </table>
+        }
+
+        function TagList(properties) {
+            // Return a span for each tag in tags
+            return <div>
+                {properties.tags.map((tag) => (
+                    <span
+                        key={tag}
+                        className="badge badge-pill badge-light mr-1"
+                    >
+                        {tag}
+                    </span>
+                ))}
+            </div>
+        }
+
+        function RecipePane(properties) {
+            var recipe = properties.recipe;
+
+            return <div>
+                <div class="mt-3 mb-3">
+                    <h2>{recipe.name}</h2>
+                    {recipe.tags.map((tag) => (
+                        <span
+                            key={tag}
+                            className="badge badge-pill badge-light ml-3"
+                        >
+                            {tag}
+                        </span>
+                    ))}
+                </div>
+                <div>
+                    <h3>Ingredients</h3>
+                    <ul>
+                        {recipe.ingredients.map((ingredient) => (
+                            <li key={ingredient.name}>
+                                {ingredient.name} - {ingredient.quantity}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <div>
+                    <h3>Instructions</h3>
+                    <ol>
+                        {recipe.instructions.map((instruction) => (
+                            <li key={instruction}>{instruction}</li>
+                        ))}
+                    </ol>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary mb-3 mr-1">Edit Recipe</button>
+                    <button type="button" class="btn btn-danger mb-3 mr-1">Delete Recipe</button>
+                </div>
+                <div>
+                    <h3>Comments</h3>
+                    <div>
+                        {recipe.comments.map((comment) => (
+                            <div class="card mb-2 mr-2">
+                                <div class="card-body">
+                                    {comment.comment}
+                                </div>
+                                <div class="card-footer">
+                                    <small class="text-muted">By {comment.author} on {comment.date}</small>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        }
+
+        ReactDOM.render(<RecipeList recipes={recipeList} />, document.getElementById("recipeList"));
+        ReactDOM.render(<TagList tags={tags} />, document.getElementById("tagList"));
+        ReactDOM.render(<RecipePane recipe={recipeList[1]} />, document.getElementById("recipeFocusPane"));
+    </script>
+</body>
+
+</html>
