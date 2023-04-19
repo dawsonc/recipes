@@ -1,0 +1,171 @@
+{
+	"info": {
+		"_postman_id": "585b3c08-a9c6-4e01-a051-71ec23be212f",
+		"name": "recipes",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "26928754"
+	},
+	"item": [
+		{
+			"name": "GET all recipes",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8080/api/recipes",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"recipes"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE recipe by ID",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "localhost:8080/api/recipes/id/643b27343dc730a7383d4536",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"recipes",
+						"id",
+						"643b27343dc730a7383d4536"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PUT update recipe",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n        \"ID\": \"643b252d358effd95a7043b9\",\n        \"Name\": \"toast\",\n        \"Description\": \"toast\",\n        \"Ingredients\": [\n            {\n                \"Name\": \"toast\",\n                \"Quantity\": \"1\"\n            }\n        ],\n        \"Steps\": [\n            \"toast\"\n        ],\n        \"Tags\": [\"toast\", \"tasty\", \"breadular\"],\n        \"Comments\": []\n    }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8080/api/recipes/id/643b252d358effd95a7043b9",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"recipes",
+						"id",
+						"643b252d358effd95a7043b9"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET recipe by ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8080/api/recipes/id/643b252d358effd95a7043b9",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"recipes",
+						"id",
+						"643b252d358effd95a7043b9"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET recipes with tags",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8080/api/recipes?tags=tasty,pasta",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"recipes"
+					],
+					"query": [
+						{
+							"key": "tags",
+							"value": "tasty,pasta"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET all tags",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8080/api/recipes/tags",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"recipes",
+						"tags"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET search recipes",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8080/api/recipes?q=italian",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"recipes"
+					],
+					"query": [
+						{
+							"key": "q",
+							"value": "italian"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
