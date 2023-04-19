@@ -25,5 +25,5 @@ Please submit your contributions via a [pull request](https://github.com/dawsonc
 
 ## Code standards
 
-TODO@dawsonc add these
+TODO@dawsonc add some guidelines, including tests and CI.
 
