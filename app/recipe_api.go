@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -35,21 +34,18 @@ func AddRecipesAPI(router *gin.Engine, recipe_manager recipes.RecipeManager) {
 			var err error
 			switch {
 			case id != "":
-				fmt.Println("ID: ", id)
 				// Get the recipe from the database with the given ID
 				var recipe recipes.Recipe
 				recipe, err = recipe_manager.GetRecipeByID(id)
 				// Wrap the recipe in a single element slice
 				queried_recipes = []recipes.Recipe{recipe}
 			case search_term != "":
-				fmt.Println("Search term: ", search_term, " Tags: ", tags)
 				// Get all recipes that match the given tags and search term
 				queried_recipes, err = recipe_manager.SearchRecipes(search_term, tags)
 			case len(tags) > 0:
 				// Get all recipes that match the given tags
 				queried_recipes, err = recipe_manager.GetRecipesByTags(tags)
 			default:
-				fmt.Println("No query strings")
 				// Get all recipes from the database
 				queried_recipes, err = recipe_manager.GetAllRecipes()
 			}
