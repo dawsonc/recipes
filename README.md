@@ -1,7 +1,7 @@
 # Recipes
 
-![Build Status](https://github.com/dawsonc/recipes/actions/workflows/go_build.yml/badge.svg)
-![Code Health](https://github.com/dawsonc/recipes/actions/workflows/go_fmt.yml/badge.svg)
+![Build Status](https://github.com/dawsonc/recipes/actions/workflows/go_build.yml/badge.svg?branch=main)
+![Code Health](https://github.com/dawsonc/recipes/actions/workflows/go_fmt.yml/badge.svg?branch=main)
 
 This is a web application for managing recipes. It includes a backend API written in Go and a frontend UI written in React.
 
