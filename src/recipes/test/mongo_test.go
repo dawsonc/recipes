@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"reflect"
 	"testing"
 
@@ -14,9 +15,27 @@ import (
 )
 
 var (
-	testDBName = "recipes_test"
-	testURI    = "mongodb://localhost:27017/" + testDBName
+	testDBName, testURI string
 )
+
+func init() {
+	// Get the database name and uri from environment variables using os
+	testDBName = os.Getenv("TEST_DB_NAME")
+	testURI = os.Getenv("TEST_DB_URI")
+
+	fmt.Println("===========================================")
+	fmt.Println("testDBName:", testDBName)
+	fmt.Println("testURI:", testURI)
+	fmt.Println("===========================================")
+
+	// If the environment variables are not set, use the default values
+	if testDBName == "" {
+		testDBName = "recipes_test"
+	}
+	if testURI == "" {
+		testURI = "mongodb://localhost:27017"
+	}
+}
 
 // Define functions to set up and tear down the test database before and after each
 // test
