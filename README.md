@@ -7,7 +7,7 @@ This is a web application for managing recipes. It includes a backend API writte
 
 ## Getting started
 
-To get started, make sure that you have installed [Go](golang.org).
+To get started, make sure that you have installed [Go](https://go.dev/doc/install) and [MongoDB](https://www.mongodb.com/docs/manual/administration/install-community/). Make sure MongoDB is running as a local service before proceeding.
 
 1. Clone the repository into your `GOPATH`:
 
