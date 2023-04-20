@@ -23,6 +23,11 @@ func init() {
 	testDBName = os.Getenv("TEST_DB_NAME")
 	testURI = os.Getenv("TEST_DB_URI")
 
+	fmt.Println("===========================================")
+	fmt.Println("testDBName:", testDBName)
+	fmt.Println("testURI:", testURI)
+	fmt.Println("===========================================")
+
 	// If the environment variables are not set, use the default values
 	if testDBName == "" {
 		testDBName = "recipes_test"
