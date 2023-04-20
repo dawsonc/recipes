@@ -104,7 +104,7 @@
                 setActiveRecipe({
                     Name: "New Recipe",
                     Description: "An example of a new recipe",
-                    Ingredients: [{ Name: "example ingredient", Quantity: "1 unit"}],
+                    Ingredients: [{ Name: "example ingredient", Quantity: "1 unit" }],
                     Steps: ["Example step 1", "Example step 2"],
                     Tags: [],
                     Comments: [],
@@ -146,7 +146,7 @@
                 <div id="recipeFocusPane" class="col-md-6 border rounded">
                     <RecipePane activeRecipe={activeRecipe} editMode={editMode}
                         creatingRecipe={creatingRecipe} setEditMode={setEditMode}
-                        setCreatingRecipe={setCreatingRecipe} setActiveRecipe={setActiveRecipe}/>
+                        setCreatingRecipe={setCreatingRecipe} setActiveRecipe={setActiveRecipe} />
                 </div>
             </div>
         }
@@ -240,19 +240,26 @@
             </div>
         }
 
-        function RecipePane({activeRecipe, editMode, creatingRecipe, setEditMode, setCreatingRecipe, setActiveRecipe}){
+        function RecipePane({ activeRecipe, editMode, creatingRecipe, setEditMode, setCreatingRecipe, setActiveRecipe }) {
             // Choose whether to render the display pane or the edit pane
             if (editMode) {
-                return <RecipeEditPane activeRecipe={activeRecipe} creatingRecipe={creatingRecipe} setEditMode={setEditMode} setCreatingRecipe={setCreatingRecipe} setActiveRecipe={setActiveRecipe}/>
+                return <RecipeEditPane activeRecipe={activeRecipe} creatingRecipe={creatingRecipe} setEditMode={setEditMode} setCreatingRecipe={setCreatingRecipe} setActiveRecipe={setActiveRecipe} />
             } else {
                 return <RecipeDisplayPane activeRecipe={activeRecipe} setEditMode={setEditMode} />
             }
         }
 
-        function RecipeEditPane({activeRecipe, creatingRecipe, setEditMode, setCreatingRecipe, setActiveRecipe}) {
+        function RecipeEditPane({ activeRecipe, creatingRecipe, setEditMode, setCreatingRecipe, setActiveRecipe }) {
             // Create a handler for the cancel button
             function handleCancelButton() {
                 setEditMode(false);
+
+                // If we were creating a recipe and cancel, don't display any recipe
+                if (creatingRecipe) {
+                    setActiveRecipe({});
+                }
+
+                // In any case, reset the creating recipe flag
                 setCreatingRecipe(false);
             }
 
@@ -275,14 +282,61 @@
             // Create handlers for updating various parts of the recipe
             function handleNameChange(event) {
                 activeRecipe.Name = event.target.innerText;
-            }
-            
-            function handleTagChange(event) {
-                // Update tags by splitting along commas, trimming whitespace, and removing empty strings
-                activeRecipe.Tags = event.target.innerText.split(",").map((tag) => tag.trim()).filter((tag) => tag.length > 0);
                 setActiveRecipe(activeRecipe);
+            }
 
-                // TODO make the UX better here
+            function handleEditTagKeyDown(event) {
+                // When the enter key is pressed, update the tag and de-focus the field
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    event.target.blur();
+
+                    // Update the tag in the recipe if it isn't blank (otherwise, remove it)
+                    if (event.target.innerText.trim() === "") {
+                        handleRemoveTag(event);
+                        return;
+                    }
+                    activeRecipe = Object.assign({}, activeRecipe);
+                    activeRecipe.Tags = activeRecipe.Tags.map((tag) => {
+                        if (tag === event.target.id) {
+                            return event.target.innerText.trim();
+                        } else {
+                            return tag;
+                        }
+                    });
+                    setActiveRecipe(activeRecipe);
+
+                    // Update the field
+                    event.target.innerText = event.target.innerText.trim();
+                }
+            }
+
+            function handleRemoveTag(event) {
+                // Remove the tag from the recipe
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Tags = activeRecipe.Tags.filter((tag) => tag !== event.target.id);
+                setActiveRecipe(activeRecipe);
+            }
+
+            function handleAddTagKeyDown(event) {
+                // When the enter key is pressed, add the new tag and de-focus the field
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    event.target.blur();
+
+                    // Add the tag to the recipe if it isn't blank
+                    if (event.target.innerText.trim() === "") {
+                        event.target.innerText = "+ Add tag";
+                        return;
+                    }
+
+                    activeRecipe = Object.assign({}, activeRecipe);
+                    activeRecipe.Tags.push(event.target.innerText.trim());
+                    setActiveRecipe(activeRecipe);
+
+                    // Clear the field
+                    event.target.innerText = "+ Add tag";
+                }
             }
 
             return <div>
@@ -290,17 +344,25 @@
                     <h2 contentEditable={true} onInput={handleNameChange} onKeyDown={handleKeyDown}>
                         {activeRecipe.Name}
                     </h2>
-                    <p contentEditable={true} onInput={handleTagChange} onKeyDown={handleKeyDown}>
-                        {activeRecipe.Tags.length > 0 ? activeRecipe.Tags.join(", ") + ", " : "Enter comma-separated tags, "}
-                    </p>
                     {activeRecipe.Tags.map((tag) => (
                         <span
                             key={tag}
                             className="badge badge-pill badge-light ml-3"
+                            id={tag}
                         >
-                            {tag}
+                            <span className="mr-1 t-weight-bold text-primary" id={tag} onClick={handleRemoveTag}>&times;</span>
+                            <span id={tag} contentEditable={true} onKeyDown={handleEditTagKeyDown}>{tag}</span>
                         </span>
                     ))}
+                    <span
+                        key="addTag"
+                        className="badge badge-pill badge-light ml-3"
+                        contentEditable={true}
+                        onKeyDown={handleAddTagKeyDown}
+                        onFocus={(event) => event.target.innerText = " "}
+                    >
+                        + Add tag
+                    </span>
                 </div>
                 <div>
                     <h3>Ingredients</h3>
