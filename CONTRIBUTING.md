@@ -15,15 +15,22 @@ The code is structured into three directories:
         - `tests`: contains the `recipes_test` package used to unit test the recipes interface.
 
 
-## Issues
+## GitHub
 
-We use [GitHub issues](https://github.com/dawsonc/recipes/issues) to track project development, including new features and bugs to fix.
+We use [GitHub issues](https://github.com/dawsonc/recipes/issues) to track project development, including new features and bugs to fix. Submitting an issue or contributing a fix for an open issue is a great way to get started!
 
-## Pull requests
+Once you have completed your feature/fix/etc., please submit your contributions via a [pull request](https://github.com/dawsonc/recipes/pulls). After a (hopefully constructive and helpful) code review, your change can get merged into the main code! To help code review go smoothly, please follow some of the guidelines below.
 
-Please submit your contributions via a [pull request](https://github.com/dawsonc/recipes/pulls).
+## Contributor guidelines
 
-## Code standards
+Here are some things to keep in mind while working on this project.
 
-TODO@dawsonc add some guidelines, including tests and CI.
+- Any new features or code paths should be covered by unit tests. Any changes to existing code should come with accompanying updates to the unit tests (either to catch a previously-uncaught bug or to test the new behavior).
+- Code should prioritize readability and be well-commented.
+- TODO@dawsonc style guide?
+- Code should be auto-formatted.
+    - Go code should be formatted with `gofmt`.
+    - HTML and JS should be formatted with `TODO@dawsonc`.
+- Update the documentation sooner rather than later.
 
+These points mirror the checklist in the PR template, so addressing them early and keeping them in mind will help set your code up for a successfull code review!
