@@ -22,6 +22,11 @@ func main() {
 	// Serve frontend files
 	router.Static("/app", "./frontend")
 
+	// Redirect the homepage to the app
+	router.GET("/", func(c *gin.Context) {
+		c.Redirect(301, "/app")
+	})
+
 	// Run the server
 	router.Run(":8080")
 }

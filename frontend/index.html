@@ -18,6 +18,17 @@
 
     <!-- Babel NOT FOR PROD -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+
+    <!-- sanitizer - should find a way to include this (or similar) via npm/webpack in the long term -->
+    <script src="https://cdn.jsdelivr.net/gh/jitbit/HtmlSanitizer@master/HtmlSanitizer.js"></script>
+
+    <!-- Custom styling -->
+    <style>
+        .text-editable {
+            font-family: Consolas, Courier, monospace;
+            border: 1px solid #ccc;
+        }
+    </style>
 </head>
 
 <body>
@@ -47,6 +58,8 @@
             const [editMode, setEditMode] = React.useState(false);
             // Whether or not the user is creating a new recipe
             const [creatingRecipe, setCreatingRecipe] = React.useState(false);
+            // Whether or not we need to refresh the list of recipes
+            const [refreshRecipeList, setRefreshRecipeList] = React.useState(false);
 
             // Fetch the recipe list from the server on load and again when
             // either the active tags or search query change
@@ -54,7 +67,7 @@
                 fetch('/api/recipes?tags=' + activeTags.join(',') + '&q=' + searchQuery)
                     .then(response => response.json())
                     .then(data => setRecipeList(data));
-            }, [activeTags, searchQuery]);
+            }, [activeTags, searchQuery, refreshRecipeList]);
 
             // Also fetch a list of all tags on load
             React.useEffect(() => {
@@ -146,7 +159,9 @@
                 <div id="recipeFocusPane" class="col-md-6 border rounded">
                     <RecipePane activeRecipe={activeRecipe} editMode={editMode}
                         creatingRecipe={creatingRecipe} setEditMode={setEditMode}
-                        setCreatingRecipe={setCreatingRecipe} setActiveRecipe={setActiveRecipe} />
+                        setCreatingRecipe={setCreatingRecipe} setActiveRecipe={setActiveRecipe}
+                        setActiveRecipeByName={setActiveRecipeByName}
+                        refreshRecipeList={refreshRecipeList} setRefreshRecipeList={setRefreshRecipeList} />
                 </div>
             </div>
         }
@@ -240,49 +255,41 @@
             </div>
         }
 
-        function RecipePane({ activeRecipe, editMode, creatingRecipe, setEditMode, setCreatingRecipe, setActiveRecipe }) {
+        function RecipePane({
+            activeRecipe,
+            editMode,
+            creatingRecipe,
+            setEditMode,
+            setCreatingRecipe,
+            setActiveRecipe,
+            setActiveRecipeByName,
+            refreshRecipeList,
+            setRefreshRecipeList 
+        }) {
             // Choose whether to render the display pane or the edit pane
             if (editMode) {
-                return <RecipeEditPane activeRecipe={activeRecipe} creatingRecipe={creatingRecipe} setEditMode={setEditMode} setCreatingRecipe={setCreatingRecipe} setActiveRecipe={setActiveRecipe} />
+                return <RecipeEditPane activeRecipe={activeRecipe} creatingRecipe={creatingRecipe}
+                    setEditMode={setEditMode} setCreatingRecipe={setCreatingRecipe}
+                    setActiveRecipe={setActiveRecipe} setActiveRecipeByName={setActiveRecipeByName}
+                    refreshRecipeList={refreshRecipeList} setRefreshRecipeList={setRefreshRecipeList} />
             } else {
                 return <RecipeDisplayPane activeRecipe={activeRecipe} setEditMode={setEditMode} />
             }
         }
 
-        function RecipeEditPane({ activeRecipe, creatingRecipe, setEditMode, setCreatingRecipe, setActiveRecipe }) {
-            // Create a handler for the cancel button
-            function handleCancelButton() {
-                setEditMode(false);
-
-                // If we were creating a recipe and cancel, don't display any recipe
-                if (creatingRecipe) {
-                    setActiveRecipe({});
-                }
-
-                // In any case, reset the creating recipe flag
-                setCreatingRecipe(false);
-            }
-
-            // Create a handler for the save button
-            function handleSaveButton() {
-                // TODO PUT or POST activeRecipe depending on whether we're creating or editing
-                setEditMode(false);
-                setCreatingRecipe(false);
-            }
+        function RecipeEditPane({ activeRecipe, creatingRecipe, setEditMode, setCreatingRecipe, setActiveRecipe, setActiveRecipeByName, refreshRecipeList, setRefreshRecipeList }) {
+            // Define references for the name, ingredient, steps fields
+            const nameRef = React.useRef(null);
+            const ingredientsTextareaRef = React.useRef(null);
+            const stepsTextareaRef = React.useRef(null);
 
             // Create a handler for disabling newlines in fields where we don't want those
             // (instead, we'd like to stop editing when the user hits enter)
-            function handleKeyDown(event) {
+            function handleEditNameKeyDown(event) {
                 if (event.key === "Enter") {
                     event.preventDefault();
                     event.target.blur();
                 }
-            }
-
-            // Create handlers for updating various parts of the recipe
-            function handleNameChange(event) {
-                activeRecipe.Name = event.target.innerText;
-                setActiveRecipe(activeRecipe);
             }
 
             function handleEditTagKeyDown(event) {
@@ -299,7 +306,7 @@
                     activeRecipe = Object.assign({}, activeRecipe);
                     activeRecipe.Tags = activeRecipe.Tags.map((tag) => {
                         if (tag === event.target.id) {
-                            return event.target.innerText.trim();
+                            return HtmlSanitizer.SanitizeHtml(event.target.innerText.trim());
                         } else {
                             return tag;
                         }
@@ -307,7 +314,12 @@
                     setActiveRecipe(activeRecipe);
 
                     // Update the field
-                    event.target.innerText = event.target.innerText.trim();
+                    event.target.innerText = HtmlSanitizer.SanitizeHtml(event.target.innerText.trim());
+                } else if (event.key === "Escape") {
+                    // If the user hits escape, cancel editing the tag
+                    event.preventDefault();
+                    event.target.blur();
+                    event.target.innerText = event.target.id;
                 }
             }
 
@@ -331,23 +343,164 @@
                     }
 
                     activeRecipe = Object.assign({}, activeRecipe);
-                    activeRecipe.Tags.push(event.target.innerText.trim());
+                    activeRecipe.Tags.push(HtmlSanitizer.SanitizeHtml(event.target.innerText.trim()));
                     setActiveRecipe(activeRecipe);
 
                     // Clear the field
                     event.target.innerText = "+ Add tag";
+                } else if (event.key === "Escape") {
+                    // If the user hits escape, cancel editing the tag
+                    event.preventDefault();
+                    event.target.blur();
+                    event.target.innerText = "+ Add tag";
                 }
+            }
+
+            // Create a handler for updating the recipe's ingredients
+            function handleIngredientsChange(event) {
+                console.log(event)
+            }
+
+            // Create a function for parsing the ingredients field into an array of ingredients
+            function parseIngredients(rawIngredientsText) {
+                // Split the ingredients into lines
+                const lines = rawIngredientsText.split("\n");
+
+                // Parse each line into an ingredient
+                var ingredients = lines.map((line) => {
+                    // Split the line into name and quantity given the format
+                    // "- name: quantity"
+                    const split = line.split(":");
+                    var name = HtmlSanitizer.SanitizeHtml(split[0].trim());
+                    if (name.startsWith("- ")) {
+                        name = name.substring(2);
+                    }
+
+                    var quantity = ""
+                    if (split.length == 1) {
+                        quantity = ""
+                    } else {
+                        quantity = HtmlSanitizer.SanitizeHtml(split[1].trim());
+                    }
+
+                    // Return the ingredient
+                    return {
+                        Quantity: quantity,
+                        Name: name,
+                    };
+                });
+
+                // Ignore any where the name is blank
+                ingredients = ingredients.filter((ingredient) => ingredient.Name !== "");
+
+                // Return the ingredients
+                return ingredients;
+            }
+
+            // Create a handler for parsing the steps field into an array of steps
+            function parseSteps(rawStepsText) {
+                // Split the steps into lines
+                const lines = rawStepsText.split("\n");
+
+                // Parse each line into an instruction
+                var steps = lines.map((line) => {
+                    line = HtmlSanitizer.SanitizeHtml(line);
+
+                    // Remove the leading "-" from the line
+                    if (line.startsWith("-")) {
+                        line = line.substring(1).trim();
+                    }
+
+                    // Return the step
+                    return line.trim();
+                });
+
+                // Ignore any empty lines
+                steps = steps.filter((step) => step !== "");
+
+                // Return the steps
+                return steps;
+            }
+
+            // Create a handler for the cancel button
+            function handleCancelButton() {
+                setEditMode(false);
+
+                // If we were creating a recipe and cancel, don't display any recipe
+                if (creatingRecipe) {
+                    setActiveRecipe({});
+                } else {
+                    // Otherwise, refresh the recipe list
+                    setRefreshRecipeList(!refreshRecipeList);
+
+                    // And reset the active recipe to its clean version
+                    setActiveRecipeByName(activeRecipe.Name);
+                }
+
+                // In any case, reset the creating recipe flag
+                setCreatingRecipe(false);
+            }
+
+            // Create a handler for the save button
+            function handleSaveButton() {
+                activeRecipe = Object.assign({}, activeRecipe);
+
+                // Parse the name
+                activeRecipe.Name = HtmlSanitizer.SanitizeHtml(nameRef.current.innerText);
+
+                // Parse the steps and ingredients
+                activeRecipe.Ingredients = parseIngredients(ingredientsTextareaRef.current.value);
+                activeRecipe.Steps = parseSteps(stepsTextareaRef.current.value);
+
+                // Update the active recipe
+                setActiveRecipe(activeRecipe);
+
+                // PUT or POST activeRecipe depending on whether we're creating or editing
+                if (creatingRecipe) {
+                    // POST the recipe
+                    fetch("/api/recipes", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(activeRecipe),
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            // Update the active recipe with the new ID
+                            activeRecipe = Object.assign({}, activeRecipe);
+                            activeRecipe.ID = data.ID;
+                            setActiveRecipe(activeRecipe);
+                        });
+                } else {
+                    // PUT the recipe
+                    fetch("/api/recipes/id/" + activeRecipe.ID, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(activeRecipe),
+                    });
+                }
+
+                // End editing mode
+                setEditMode(false);
+                setCreatingRecipe(false);
+
+                // Refresh the recipes list
+                setRefreshRecipeList(!refreshRecipeList);
             }
 
             return <div>
                 <div class="mt-3 mb-3">
-                    <h2 contentEditable={true} onInput={handleNameChange} onKeyDown={handleKeyDown}>
+                    <h2 contentEditable={true} ref={nameRef}
+                        onKeyDown={handleEditNameKeyDown} class="text-editable rounded">
                         {activeRecipe.Name}
                     </h2>
                     {activeRecipe.Tags.map((tag) => (
                         <span
                             key={tag}
-                            className="badge badge-pill badge-light ml-3"
+                            className="badge badge-pill badge-light ml-3 text-editable"
                             id={tag}
                         >
                             <span className="mr-1 t-weight-bold text-primary" id={tag} onClick={handleRemoveTag}>&times;</span>
@@ -356,7 +509,7 @@
                     ))}
                     <span
                         key="addTag"
-                        className="badge badge-pill badge-light ml-3"
+                        className="badge badge-pill badge-light ml-3 text-editable"
                         contentEditable={true}
                         onKeyDown={handleAddTagKeyDown}
                         onFocus={(event) => event.target.innerText = " "}
@@ -366,21 +519,27 @@
                 </div>
                 <div>
                     <h3>Ingredients</h3>
-                    <ul>
-                        {activeRecipe.Ingredients.map((ingredient) => (
-                            <li key={ingredient.Name}>
-                                {ingredient.Name} - {ingredient.Quantity}
-                            </li>
-                        ))}
-                    </ul>
+                    <textarea class="rounded text-editable" style={{ width: "100%" }}
+                        id="ingredients-list"
+                        ref={ingredientsTextareaRef}
+                        rows={activeRecipe.Ingredients.length + 1}
+                        defaultValue={activeRecipe.Ingredients.map((ingredient) =>
+                            ("- "
+                            + ingredient.Name
+                            + (ingredient.Quantity !== "" ? ":" : "")
+                            + " "
+                            + ingredient.Quantity)).join("\n")}>
+                    </textarea>
                 </div>
                 <div>
                     <h3>Instructions</h3>
-                    <ol>
-                        {activeRecipe.Steps.map((instruction) => (
-                            <li key={instruction}>{instruction}</li>
-                        ))}
-                    </ol>
+                    <textarea class="rounded text-editable" style={{ width: "100%" }}
+                        id="steps-list"
+                        ref={stepsTextareaRef}
+                        rows={activeRecipe.Steps.length + 1}
+                        defaultValue={activeRecipe.Steps.map((step) =>
+                            ("- " + step)).join("\n")}>
+                    </textarea>
                 </div>
                 <div>
                     <button type="button" onClick={handleSaveButton} class="btn btn-primary mb-3 mr-1">{creatingRecipe ? "Create" : "Save"} Recipe</button>
@@ -391,7 +550,7 @@
 
         function RecipeDisplayPane({ activeRecipe, setEditMode }) {
             // If no recipe is selected, render an empty div
-            if (activeRecipe.Name === undefined) {
+            if (activeRecipe === {} || activeRecipe.Name === undefined) {
                 return <div class="mt-3 mb-3"></div>
             }
 
@@ -422,7 +581,7 @@
                     <ul>
                         {activeRecipe.Ingredients.map((ingredient) => (
                             <li key={ingredient.Name}>
-                                {ingredient.Name} - {ingredient.Quantity}
+                                {ingredient.Name}{ingredient.Quantity !== "" ? ":" : ""} {ingredient.Quantity}
                             </li>
                         ))}
                     </ul>
