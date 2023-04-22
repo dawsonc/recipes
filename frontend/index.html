@@ -273,7 +273,7 @@
                     setActiveRecipe={setActiveRecipe} setActiveRecipeByName={setActiveRecipeByName}
                     refreshRecipeList={refreshRecipeList} setRefreshRecipeList={setRefreshRecipeList} />
             } else {
-                return <RecipeDisplayPane activeRecipe={activeRecipe} setEditMode={setEditMode} />
+                return <RecipeDisplayPane activeRecipe={activeRecipe} setActiveRecipe={setActiveRecipe} setEditMode={setEditMode} />
             }
         }
 
@@ -548,7 +548,7 @@
             </div>
         }
 
-        function RecipeDisplayPane({ activeRecipe, setEditMode }) {
+        function RecipeDisplayPane({ activeRecipe, setActiveRecipe, setEditMode }) {
             // If no recipe is selected, render an empty div
             if (activeRecipe === {} || activeRecipe.Name === undefined) {
                 return <div class="mt-3 mb-3"></div>
@@ -562,6 +562,39 @@
             // Create an onClick handler for the edit button
             function handleEditButton() {
                 setEditMode(true);
+            }
+
+            // Create a handler for the new comment form
+            function handleAddNewComment(event) {
+                event.preventDefault();
+
+                // Get the author and comment
+                const author = event.target.elements.author.value;
+                const comment = event.target.elements.comment.value;
+                
+                // Add to the active recipe
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Comments.push({
+                    Author: author,
+                    Comment: comment,
+                    Date: new Date(),
+                });
+
+                // PUT the recipe to update it
+                fetch("/api/recipes/id/" + activeRecipe.ID, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(activeRecipe),
+                });
+
+                // Clear the form text
+                event.target.elements.author.value = "";
+                event.target.elements.comment.value = "";
+
+                // Update the active recipe
+                setActiveRecipe(activeRecipe);
             }
 
             return <div>
@@ -604,14 +637,34 @@
                         {activeRecipe.Comments.map((comment) => (
                             <div class="card mb-2 mr-2">
                                 <div class="card-body">
-                                    {comment.comment}
+                                    {comment.Comment}
                                 </div>
                                 <div class="card-footer">
-                                    <small class="text-muted">By {comment.author} on {comment.date}</small>
+                                    <small class="text-muted">By {comment.Author} on {
+                                        new Intl.DateTimeFormat('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric',
+                                        }).format(new Date(comment.Date))
+                                    }</small>
                                 </div>
                             </div>
                         ))}
                     </div>
+                    <form onSubmit={handleAddNewComment} className="mt-3">
+                    <div class="form-group">
+                        <label htmlFor="comment">Add a comment:</label>
+                        <textarea
+                        id="comment"
+                        name="comment"
+                        class="form-control"
+                        placeholder="Comment"
+                        required
+                        />
+                        <input class="form-control" id="author" placeholder="Author"/>
+                    </div>
+                    <button type="submit" className="btn btn-primary">Submit</button>
+                    </form>
                 </div>
             </div>
         }
