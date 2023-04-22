@@ -242,7 +242,7 @@ func (m *MongoRecipeManager) GetTags() ([]string, error) {
 }
 
 // SearchRecipes returns all recipes that match the given query string and tags
-func (m *MongoRecipeManager) SearchRecipes(query string, tags []string) ([]Recipe, error) {
+func (m *MongoRecipeManager) SearchRecipes(query string, tags []string) ([]RecipeSummary, error) {
 	// Get the collection handle
 	collection := m.client.Database(m.dbName).Collection(m.collectionName)
 
@@ -275,15 +275,18 @@ func (m *MongoRecipeManager) SearchRecipes(query string, tags []string) ([]Recip
 		return nil, err
 	}
 
-	// iterate over the cursor and decode each document into a Recipe object
-	var recipes []Recipe
+	// iterate over the cursor and decode each document into a RecipeSummary
+	var recipe_summaries []RecipeSummary
 	for cursor.Next(ctx) {
 		var recipe Recipe
 		err := cursor.Decode(&recipe)
 		if err != nil {
 			return nil, err
 		}
-		recipes = append(recipes, recipe)
+		recipe_summaries = append(
+			recipe_summaries,
+			RecipeSummary{recipe.ID.Hex(), recipe.Name, recipe.Tags},
+		)
 	}
 
 	// check if there were any errors during iteration
@@ -296,5 +299,5 @@ func (m *MongoRecipeManager) SearchRecipes(query string, tags []string) ([]Recip
 	if err != nil {
 		return nil, err
 	}
-	return recipes, nil
+	return recipe_summaries, nil
 }

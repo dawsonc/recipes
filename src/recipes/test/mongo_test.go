@@ -355,40 +355,57 @@ func TestSearchRecipes(t *testing.T) {
 	// Search for recipes with the query "recipe" with no tags (should match both)
 	query := "recipe"
 	tags := []string{}
-	recipes, err := recipeManager.SearchRecipes(query, tags)
+	recipe_summaries, err := recipeManager.SearchRecipes(query, tags)
 	if err != nil {
 		t.Fatalf("Failed to search for recipes (query %v, tags %v): %v", query, tags, err)
 	}
 
 	// This should retrieve both recipes
-	if len(recipes) != 2 {
+	if len(recipe_summaries) != 2 {
 		t.Fatalf("Incorrect number of recipes retrieved (query %v, tags %v): "+
-			"expected %v, got %v", query, tags, 2, len(recipes))
+			"expected %v, got %v", query, tags, 2, len(recipe_summaries))
 	}
-	objID1, _ := primitive.ObjectIDFromHex(recipeID1)
-	objID2, _ := primitive.ObjectIDFromHex(recipeID2)
-	if recipes[0].ID != objID1 && recipes[1].ID != objID1 {
+	if recipe_summaries[0].ID != recipeID1 && recipe_summaries[1].ID != recipeID1 {
 		t.Fatalf("Test recipe 1 was not retrieved (query %v, tags %v)", query, tags)
 	}
-	if recipes[0].ID != objID2 && recipes[1].ID != objID2 {
+	if recipe_summaries[0].ID != recipeID2 && recipe_summaries[1].ID != recipeID2 {
 		t.Fatalf("Test recipe 2 was not retrieved (query %v, tags %v)", query, tags)
 	}
 
 	// Now filter the search to only recipes with the tag "Test Tag 2" (should only
 	// match the first recipe)
 	tags = []string{"Test Tag 2"}
-	recipes, err = recipeManager.SearchRecipes(query, tags)
+	recipe_summaries, err = recipeManager.SearchRecipes(query, tags)
 	if err != nil {
 		t.Fatalf("Failed to search for recipes (query %v, tags %v): %v", query, tags, err)
 	}
 
 	// This should retrieve only one recipe
-	if len(recipes) != 1 {
+	if len(recipe_summaries) != 1 {
 		t.Fatalf("Incorrect number of recipes retrieved (query %v, tags %v): "+
-			"expected %v, got %v", query, tags, 1, len(recipes))
+			"expected %v, got %v", query, tags, 1, len(recipe_summaries))
 	}
-	if recipes[0].ID != objID1 {
+	if recipe_summaries[0].ID != recipeID1 {
 		t.Fatalf("Test recipe 1 was not retrieved (query %v, tags %v)", query, tags)
+	}
+
+	// If we search with no filters, we should get both
+	tags = []string{}
+	recipe_summaries, err = recipeManager.SearchRecipes("", tags)
+	if err != nil {
+		t.Fatalf("Failed to search for recipes (query %v, tags %v): %v", query, tags, err)
+	}
+
+	// This should retrieve both recipes
+	if len(recipe_summaries) != 2 {
+		t.Fatalf("Incorrect number of recipes retrieved (query %v, tags %v): "+
+			"expected %v, got %v", query, tags, 2, len(recipe_summaries))
+	}
+	if recipe_summaries[0].ID != recipeID1 && recipe_summaries[1].ID != recipeID1 {
+		t.Fatalf("Test recipe 1 was not retrieved (query %v, tags %v)", query, tags)
+	}
+	if recipe_summaries[0].ID != recipeID2 && recipe_summaries[1].ID != recipeID2 {
+		t.Fatalf("Test recipe 2 was not retrieved (query %v, tags %v)", query, tags)
 	}
 }
 

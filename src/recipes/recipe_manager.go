@@ -17,5 +17,12 @@ type RecipeManager interface {
 	// GetTags returns all tags in the recipe manager
 	GetTags() ([]string, error)
 	// SearchRecipes returns all recipes that match the given query string and tags
-	SearchRecipes(query string, tags []string) ([]Recipe, error)
+	SearchRecipes(query string, tags []string) ([]RecipeSummary, error)
+}
+
+// Define a struct for summarizing a recipe
+type RecipeSummary struct {
+	ID   string
+	Name string
+	Tags []string
 }
