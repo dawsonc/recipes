@@ -303,8 +303,27 @@
                 setActiveRecipe(activeRecipe);
             }
 
-            function handleTagOnBlur(event) {
-                // If the tag is blank, remove it
+            function handleEditTagOnBlur(event) {
+                // If the new tag is blank, remove it
+                const newTag = HtmlSanitizer.SanitizeHtml(event.target.innerText.trim());
+                if (newTag === "") {
+                    handleRemoveTag(event);
+                    return;
+                }
+
+                // Update the tag in the recipe
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Tags = activeRecipe.Tags.map((tag) => {
+                    if (tag === event.target.id) {
+                        return newTag;
+                    }
+                    return tag;
+                });
+                setActiveRecipe(activeRecipe);
+            }
+
+            function handleAddTagOnBlur(event) {
+                // If the new tag is blank, remove it
                 const newTag = HtmlSanitizer.SanitizeHtml(event.target.innerText.trim());
                 if (newTag === "") {
                     handleRemoveTag(event);
@@ -312,22 +331,25 @@
                     return;
                 }
 
+                // Reset to the placeholder
+                event.target.innerText = "+ Add tag";
+
                 // Update the tag in the recipe
                 activeRecipe = Object.assign({}, activeRecipe);
                 activeRecipe.Tags = [...activeRecipe.Tags, newTag];
                 setActiveRecipe(activeRecipe);
-
-                // Clear the field
-                event.target.innerText = "+ Add tag";
             }
 
             function handleAddTagKeyDown(event) {
                 // If the user hits escape, cancel editing the tag
                 if (event.key === "Escape") {
                     event.preventDefault();
-                    event.target.innerText = "+ Add tag";
+                    event.target.innerText = "";
                     event.target.blur();
-                    return;
+                } else if (event.key === "Enter") {
+                    // If the user hits enter, add the tag
+                    event.preventDefault();
+                    event.target.blur();
                 }
             }
 
@@ -513,7 +535,8 @@
                                 id={tag} onClick={handleRemoveTag}>
                                 &times;
                             </span>
-                            <span id={tag} className="tag-text" contentEditable={true} onKeyDown={handleTagOnBlur}>
+                            <span id={tag} className="tag-text" contentEditable={true}
+                                onBlur={handleEditTagOnBlur}>
                                 {tag}
                             </span>
                         </span>
@@ -524,7 +547,7 @@
                         contentEditable={true}
                         onKeyDown={handleAddTagKeyDown}
                         onFocus={(event) => event.target.innerText = " "}
-                        onBlur={handleTagOnBlur}
+                        onBlur={handleAddTagOnBlur}
                     >
                         + Add tag
                     </span>
