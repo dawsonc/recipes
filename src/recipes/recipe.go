@@ -1,7 +1,6 @@
 package recipes
 
 import (
-	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -20,8 +19,9 @@ type Recipe struct {
 }
 
 type Ingredient struct {
-	Name     string `bson:"name"`
-	Quantity string `bson:"quantity"`
+	Name     string  `bson:"name"`
+	Quantity float32 `bson:"quantity"`
+	Unit     string  `bson:"unit"`
 }
 
 type Comments struct {
@@ -63,52 +63,4 @@ func (recipe *Recipe) RemoveTagFromRecipe(tag string) {
 			break
 		}
 	}
-}
-
-// MergeIngredientQuantities merges multiple ingredients of the same type together
-func MergeIngredientQuantities(ingredients []Ingredient) (Ingredient, error) {
-	// Only merge ingredients of the same type
-	if len(ingredients) == 0 {
-		return Ingredient{}, fmt.Errorf("cannot merge zero ingredients")
-	}
-	for i := 1; i < len(ingredients); i++ {
-		if ingredients[i].Name != ingredients[0].Name {
-			return Ingredient{}, fmt.Errorf(
-				"cannot merge ingredients of different types: "+
-					"%s and %s", ingredients[i].Name, ingredients[0].Name)
-		}
-	}
-
-	// Merge the ingredients
-	merged := ingredients[0]
-	for i := 1; i < len(ingredients); i++ {
-		merged.Quantity += ", " + ingredients[i].Quantity
-	}
-
-	return merged, nil
-}
-
-// MergeIngredients takes a list of ingredients and merges any that are the same
-func MergeIngredients(ingredients []Ingredient) []Ingredient {
-	// Make a map of ingredient names to lists of ingredients
-	ingredient_map := make(map[string][]Ingredient)
-
-	// Fill that map to track which ingredients are the same
-	for _, ingredient := range ingredients {
-		ingredient_map[ingredient.Name] = append(ingredient_map[ingredient.Name], ingredient)
-	}
-
-	// Merge all ingredients with the same name
-	merged_ingredients := make([]Ingredient, 0)
-	for _, ingredient_list := range ingredient_map {
-		merged, err := MergeIngredientQuantities(ingredient_list)
-		if err != nil {
-			// This should never happen, since all ingredients in the list
-			// should have the same name
-			panic(err)
-		}
-		merged_ingredients = append(merged_ingredients, merged)
-	}
-
-	return merged_ingredients
 }

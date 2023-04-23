@@ -46,20 +46,18 @@
             // Shared state for the application
             // List of recipes to display
             const [recipeList, setRecipeList] = React.useState([]);
-            // Active recipe to display in the recipe pane
-            const [activeRecipe, setActiveRecipe] = React.useState({});
             // List of all tags
             const [tags, setTags] = React.useState([]);
             // List of active tags used to filter recipe list
             const [activeTags, setActiveTags] = React.useState([]);
             // Search query used to filter recipe list
             const [searchQuery, setSearchQuery] = React.useState("");
+            // Active recipe to display in the recipe pane
+            const [activeRecipeID, setActiveRecipeID] = React.useState("");
             // Whether or not the app is in editing mode
             const [editMode, setEditMode] = React.useState(false);
-            // Whether or not the user is creating a new recipe
-            const [creatingRecipe, setCreatingRecipe] = React.useState(false);
             // Whether or not we need to refresh the list of recipes
-            const [refreshRecipeList, setRefreshRecipeList] = React.useState(false);
+            const [refreshRecipes, setRefreshRecipes] = React.useState(false);
 
             // Fetch the recipe list from the server on load and again when
             // either the active tags or search query change
@@ -67,38 +65,14 @@
                 fetch('/api/recipes?tags=' + activeTags.join(',') + '&q=' + searchQuery)
                     .then(response => response.json())
                     .then(data => setRecipeList(data));
-            }, [activeTags, searchQuery, refreshRecipeList]);
+            }, [activeTags, searchQuery, refreshRecipes]);
 
             // Also fetch a list of all tags on load
             React.useEffect(() => {
                 fetch('/api/recipes/tags')
                     .then(response => response.json())
-                    .then(data => setTags(data));
+                    .then(data => setTags(data === null ? [] : data));
             }, []);
-
-            // Function for setting the active recipe by name
-            function setActiveRecipeByName(name) {
-                setActiveRecipe(recipeList.find((recipe) => recipe.Name === name));
-            }
-
-            // Function for getting a list of all inactive tags
-            function inactiveTags(tags, activeTags) {
-                return tags.filter((tag) => !activeTags.includes(tag));
-            }
-
-            // Function for activating a tag (adding it to the active tags list if it's
-            // not already there)
-            function activateTag(tag, activeTags) {
-                if (activeTags.includes(tag)) {
-                    return;
-                }
-                setActiveTags([...activeTags, tag]);
-            }
-
-            // Function for deactivating a tag (removing it from the active tags list)
-            function deactivateTag(tag, activeTags) {
-                setActiveTags(activeTags.filter((t) => t !== tag));
-            }
 
             // Function for setting the active search query based on form changes
             function handleSearchTextChange(event) {
@@ -113,19 +87,11 @@
             // Function for toggling edit and creating mode on when the "Add Recipe"
             // button is clicked
             function handleAddRecipeButton() {
-                // Set the active recipe to a blank recipe
-                setActiveRecipe({
-                    Name: "New Recipe",
-                    Description: "An example of a new recipe",
-                    Ingredients: [{ Name: "example ingredient", Quantity: "1 unit" }],
-                    Steps: ["Example step 1", "Example step 2"],
-                    Tags: [],
-                    Comments: [],
-                });
+                // Set the active recipe id to a blank id
+                setActiveRecipeID("");
 
                 // Activate editing mode and creating mode
                 setEditMode(true);
-                setCreatingRecipe(true);
             }
 
             // Disable the recipeBrowser when in edit mode
@@ -146,29 +112,26 @@
                     </div>
 
                     <div id="tagList" class="mb-3">
-                        <TagList tags={tags} activeTags={activeTags} inactiveTags={inactiveTags}
-                            activateTag={activateTag} deactivateTag={deactivateTag} />
+                        <TagList tags={tags} activeTags={activeTags} setActiveTags={setActiveTags} />
                     </div>
 
                     <button type="button" onClick={handleAddRecipeButton} class="btn btn-primary col-md-12 mb-3">+ Add Recipe</button>
 
                     <div id="recipeList" class="col-md-12" style={{ "height": 800 + "px" }}>
-                        <RecipeList recipes={recipeList} setActiveRecipe={setActiveRecipeByName} editMode={editMode} />
+                        <RecipeList recipes={recipeList} setActiveRecipeID={setActiveRecipeID} editMode={editMode} />
                     </div>
                 </div>
                 <div id="recipeFocusPane" class="col-md-6 border rounded">
-                    <RecipePane activeRecipe={activeRecipe} editMode={editMode}
-                        creatingRecipe={creatingRecipe} setEditMode={setEditMode}
-                        setCreatingRecipe={setCreatingRecipe} setActiveRecipe={setActiveRecipe}
-                        setActiveRecipeByName={setActiveRecipeByName}
-                        refreshRecipeList={refreshRecipeList} setRefreshRecipeList={setRefreshRecipeList} />
+                    <RecipePane activeRecipeID={activeRecipeID} setActiveRecipeID={setActiveRecipeID}
+                        editMode={editMode} setEditMode={setEditMode}
+                        refreshRecipes={refreshRecipes} setRefreshRecipes={setRefreshRecipes} />
                 </div>
             </div>
         }
 
-        function RecipeRow({ key, name, tags, setActiveRecipe }) {
+        function RecipeRow({ id, name, tags, setActiveRecipeID }) {
             function handleClick() {
-                setActiveRecipe(name);
+                setActiveRecipeID(id);
             }
 
             return <tr onClick={handleClick}>
@@ -186,7 +149,7 @@
             </tr>
         }
 
-        function RecipeList({ recipes, setActiveRecipe, editMode }) {
+        function RecipeList({ recipes, setActiveRecipeID, editMode }) {
             if (recipes == null || recipes.length === 0) {
                 return <table class="table table-hover">
                     <tbody>
@@ -201,17 +164,36 @@
                 <tbody>
                     {recipes.map((recipe) => (
                         <RecipeRow
-                            key={recipe.Name}
+                            id={recipe.ID}
                             name={recipe.Name}
                             tags={recipe.Tags}
-                            setActiveRecipe={setActiveRecipe}
+                            setActiveRecipeID={setActiveRecipeID}
                         />
                     ))}
                 </tbody>
             </table>
         }
 
-        function TagList({ tags, activeTags, inactiveTags, activateTag, deactivateTag }) {
+        function TagList({ tags, activeTags, setActiveTags }) {
+            // Function for getting a list of all inactive tags
+            function inactiveTags(tags, activeTags) {
+                return tags.filter((tag) => !activeTags.includes(tag));
+            }
+
+            // Function for activating a tag (adding it to the active tags list if it's
+            // not already there)
+            function activateTag(tag, activeTags) {
+                if (activeTags.includes(tag)) {
+                    return;
+                }
+                setActiveTags([...activeTags, tag]);
+            }
+
+            // Function for deactivating a tag (removing it from the active tags list)
+            function deactivateTag(tag, activeTags) {
+                setActiveTags(activeTags.filter((t) => t !== tag));
+            }
+
             // Add onClick handlers to activate/deactivate tags when clicked
             function handleClickActivate(tag) {
                 activateTag(tag, activeTags);
@@ -220,7 +202,7 @@
                 deactivateTag(tag, activeTags);
             }
             function handleClickDeactivateAll() {
-                activeTags.map((tag) => deactivateTag(tag, activeTags));
+                setActiveTags([]);
             }
 
             // Return a span for each tag in tags
@@ -248,7 +230,7 @@
                 {activeTags.length > 0 ? <span
                     key="clear-tags"
                     className="badge badge-pill badge-dark mr-1"
-                    onClick={() => handleClickDeactivateAll()}
+                    onClick={handleClickDeactivateAll}
                 >
                     clear all
                 </span> : ""}
@@ -256,33 +238,53 @@
         }
 
         function RecipePane({
-            activeRecipe,
+            activeRecipeID,
             editMode,
-            creatingRecipe,
             setEditMode,
-            setCreatingRecipe,
-            setActiveRecipe,
-            setActiveRecipeByName,
-            refreshRecipeList,
-            setRefreshRecipeList 
+            setActiveRecipeID,
+            refreshRecipes,
+            setRefreshRecipes
         }) {
+            // The recipe pane has a state for the active recipe and an effect to fetch that
+            // recipe from the server when the active recipe ID changes
+            const [activeRecipe, setActiveRecipe] = React.useState(null);
+
+            React.useEffect(() => {
+                console.log(activeRecipeID)
+                if (activeRecipeID === null) {
+                    setActiveRecipe(null);
+                    return;
+                } else if (activeRecipeID === "") {
+                    // Creating a new recipe
+                    setActiveRecipe({
+                        ID: "",
+                        Name: "",
+                        Ingredients: [],
+                        Steps: [],
+                        Tags: []
+                    });
+                    return;
+                }
+
+                fetch("/api/recipes/id/" + activeRecipeID)
+                    .then((response) => response.json())
+                    .then((data) => {
+                        setActiveRecipe(data);
+                    });
+            }, [activeRecipeID, refreshRecipes]);
+
             // Choose whether to render the display pane or the edit pane
             if (editMode) {
-                return <RecipeEditPane activeRecipe={activeRecipe} creatingRecipe={creatingRecipe}
-                    setEditMode={setEditMode} setCreatingRecipe={setCreatingRecipe}
-                    setActiveRecipe={setActiveRecipe} setActiveRecipeByName={setActiveRecipeByName}
-                    refreshRecipeList={refreshRecipeList} setRefreshRecipeList={setRefreshRecipeList} />
+                return <RecipeEditPane activeRecipe={activeRecipe} setActiveRecipe={setActiveRecipe}
+                    setEditMode={setEditMode} setActiveRecipeID={setActiveRecipeID}
+                    refreshRecipes={refreshRecipes} setRefreshRecipes={setRefreshRecipes} />
             } else {
-                return <RecipeDisplayPane activeRecipe={activeRecipe} setActiveRecipe={setActiveRecipe} setEditMode={setEditMode} />
+                return <RecipeDisplayPane activeRecipe={activeRecipe} setEditMode={setEditMode}
+                    refreshRecipes={refreshRecipes} setRefreshRecipes={setRefreshRecipes} />
             }
         }
 
-        function RecipeEditPane({ activeRecipe, creatingRecipe, setEditMode, setCreatingRecipe, setActiveRecipe, setActiveRecipeByName, refreshRecipeList, setRefreshRecipeList }) {
-            // Define references for the name, ingredient, steps fields
-            const nameRef = React.useRef(null);
-            const ingredientsTextareaRef = React.useRef(null);
-            const stepsTextareaRef = React.useRef(null);
-
+        function RecipeEditPane({ activeRecipe, setActiveRecipe, setActiveRecipeID, setEditMode, refreshRecipes, setRefreshRecipes }) {
             // Create a handler for disabling newlines in fields where we don't want those
             // (instead, we'd like to stop editing when the user hits enter)
             function handleEditNameKeyDown(event) {
@@ -292,171 +294,135 @@
                 }
             }
 
-            function handleEditTagKeyDown(event) {
-                // When the enter key is pressed, update the tag and de-focus the field
-                if (event.key === "Enter") {
-                    event.preventDefault();
-                    event.target.blur();
-
-                    // Update the tag in the recipe if it isn't blank (otherwise, remove it)
-                    if (event.target.innerText.trim() === "") {
-                        handleRemoveTag(event);
-                        return;
-                    }
-                    activeRecipe = Object.assign({}, activeRecipe);
-                    activeRecipe.Tags = activeRecipe.Tags.map((tag) => {
-                        if (tag === event.target.id) {
-                            return HtmlSanitizer.SanitizeHtml(event.target.innerText.trim());
-                        } else {
-                            return tag;
-                        }
-                    });
-                    setActiveRecipe(activeRecipe);
-
-                    // Update the field
-                    event.target.innerText = HtmlSanitizer.SanitizeHtml(event.target.innerText.trim());
-                } else if (event.key === "Escape") {
-                    // If the user hits escape, cancel editing the tag
-                    event.preventDefault();
-                    event.target.blur();
-                    event.target.innerText = event.target.id;
-                }
-            }
-
             function handleRemoveTag(event) {
-                // Remove the tag from the recipe
+                // Remove the tag
                 activeRecipe = Object.assign({}, activeRecipe);
-                activeRecipe.Tags = activeRecipe.Tags.filter((tag) => tag !== event.target.id);
+                activeRecipe.Tags = activeRecipe.Tags.filter((tag) => tag !== event.target.id)
                 setActiveRecipe(activeRecipe);
             }
 
+            function handleTagOnBlur(event) {
+                // If the tag is blank, remove it
+                const newTag = HtmlSanitizer.SanitizeHtml(event.target.innerText.trim());
+                if (newTag === "") {
+                    handleRemoveTag(event);
+                    event.target.innerText = "+ Add tag";
+                    return;
+                }
+
+                // Update the tag in the recipe
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Tags = [...activeRecipe.Tags, newTag];
+                setActiveRecipe(activeRecipe);
+
+                // Clear the field
+                event.target.innerText = "+ Add tag";
+            }
+
             function handleAddTagKeyDown(event) {
-                // When the enter key is pressed, add the new tag and de-focus the field
-                if (event.key === "Enter") {
+                // If the user hits escape, cancel editing the tag
+                if (event.key === "Escape") {
                     event.preventDefault();
-                    event.target.blur();
-
-                    // Add the tag to the recipe if it isn't blank
-                    if (event.target.innerText.trim() === "") {
-                        event.target.innerText = "+ Add tag";
-                        return;
-                    }
-
-                    activeRecipe = Object.assign({}, activeRecipe);
-                    activeRecipe.Tags.push(HtmlSanitizer.SanitizeHtml(event.target.innerText.trim()));
-                    setActiveRecipe(activeRecipe);
-
-                    // Clear the field
                     event.target.innerText = "+ Add tag";
-                } else if (event.key === "Escape") {
-                    // If the user hits escape, cancel editing the tag
-                    event.preventDefault();
                     event.target.blur();
-                    event.target.innerText = "+ Add tag";
+                    return;
                 }
             }
 
-            // Create a handler for updating the recipe's ingredients
-            function handleIngredientsChange(event) {
-                console.log(event)
+            // Create a handler for adding ingredients
+            function handleAddIngredient(event) {
+                // Add the ingredient to the recipe
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Ingredients = [...activeRecipe.Ingredients, { Name: "", Quantity: "", Unit: "" }];
+                setActiveRecipe(activeRecipe);
             }
 
-            // Create a function for parsing the ingredients field into an array of ingredients
-            function parseIngredients(rawIngredientsText) {
-                // Split the ingredients into lines
-                const lines = rawIngredientsText.split("\n");
-
-                // Parse each line into an ingredient
-                var ingredients = lines.map((line) => {
-                    // Split the line into name and quantity given the format
-                    // "- name: quantity"
-                    const split = line.split(":");
-                    var name = HtmlSanitizer.SanitizeHtml(split[0].trim());
-                    if (name.startsWith("- ")) {
-                        name = name.substring(2);
-                    }
-
-                    var quantity = ""
-                    if (split.length == 1) {
-                        quantity = ""
-                    } else {
-                        quantity = HtmlSanitizer.SanitizeHtml(split[1].trim());
-                    }
-
-                    // Return the ingredient
-                    return {
-                        Quantity: quantity,
-                        Name: name,
-                    };
-                });
-
-                // Ignore any where the name is blank
-                ingredients = ingredients.filter((ingredient) => ingredient.Name !== "");
-
-                // Return the ingredients
-                return ingredients;
+            // Create a function to update ingredients
+            function handleUpdateIngredient(event, index, field) {
+                // Update the ingredient
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Ingredients[index][field] = HtmlSanitizer.SanitizeHtml(event.target.value);
+                setActiveRecipe(activeRecipe);
             }
 
-            // Create a handler for parsing the steps field into an array of steps
-            function parseSteps(rawStepsText) {
-                // Split the steps into lines
-                const lines = rawStepsText.split("\n");
+            // Create a handler for removing ingredients
+            function handleRemoveIngredient(event, index) {
+                // Remove the ingredient
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Ingredients = activeRecipe.Ingredients.filter((ingredient, i) => i !== index);
+                setActiveRecipe(activeRecipe);
+            }
 
-                // Parse each line into an instruction
-                var steps = lines.map((line) => {
-                    line = HtmlSanitizer.SanitizeHtml(line);
+            // Create a handler for adding steps
+            function handleAddStep(event) {
+                // Add the step to the recipe
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Steps = [...activeRecipe.Steps, ""];
+                setActiveRecipe(activeRecipe);
+            }
 
-                    // Remove the leading "-" from the line
-                    if (line.startsWith("-")) {
-                        line = line.substring(1).trim();
-                    }
+            // Create a function to update steps
+            function handleUpdateStep(event, index) {
+                // Update the step
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Steps[index] = HtmlSanitizer.SanitizeHtml(event.target.value);
+                setActiveRecipe(activeRecipe);
+            }
 
-                    // Return the step
-                    return line.trim();
-                });
-
-                // Ignore any empty lines
-                steps = steps.filter((step) => step !== "");
-
-                // Return the steps
-                return steps;
+            // Create a handler for removing steps
+            function handleRemoveStep(event, index) {
+                // Remove the step
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Steps = activeRecipe.Steps.filter((ingredient, i) => i !== index);
+                setActiveRecipe(activeRecipe);
             }
 
             // Create a handler for the cancel button
             function handleCancelButton() {
                 setEditMode(false);
-
-                // If we were creating a recipe and cancel, don't display any recipe
-                if (creatingRecipe) {
-                    setActiveRecipe({});
-                } else {
-                    // Otherwise, refresh the recipe list
-                    setRefreshRecipeList(!refreshRecipeList);
-
-                    // And reset the active recipe to its clean version
-                    setActiveRecipeByName(activeRecipe.Name);
-                }
-
-                // In any case, reset the creating recipe flag
-                setCreatingRecipe(false);
+                setRefreshRecipes(!refreshRecipes);
             }
 
             // Create a handler for the save button
-            function handleSaveButton() {
+            function handleSubmit(event) {
+                // Prevent the form from submitting
+                event.preventDefault();
+
+                // Update the active recipe to reflect the form contents
                 activeRecipe = Object.assign({}, activeRecipe);
 
+                // Make sure the activeRecipe tags match those input by the user
+                // (which are all in spans with class tag-text)
+                const tagSpans = document.getElementsByClassName("tag-text");
+                // Filter out any blank tags or the "+ Add tag" span (if not edited)
+                const newTags = Array.from(tagSpans).filter(
+                    (span) => span.innerText.trim() !== "" && span.innerText.trim() !== "+ Add tag"
+                )
+                activeRecipe.Tags = newTags.map(
+                    (span) => HtmlSanitizer.SanitizeHtml(span.innerText.trim())
+                );
+
                 // Parse the name
-                activeRecipe.Name = HtmlSanitizer.SanitizeHtml(nameRef.current.innerText);
+                activeRecipe.Name = HtmlSanitizer.SanitizeHtml(document.getElementById("name").value);
 
-                // Parse the steps and ingredients
-                activeRecipe.Ingredients = parseIngredients(ingredientsTextareaRef.current.value);
-                activeRecipe.Steps = parseSteps(stepsTextareaRef.current.value);
+                // Parse the ingredients
+                activeRecipe.Ingredients = Array.from(document.getElementsByClassName("ingredient-row")).map((ingredient) => {
+                    return {
+                        Name: HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-name")[0].value),
+                        Quantity: HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-quantity")[0].value),
+                        Unit: HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-unit")[0].value),
+                    }
+                });
 
-                // Update the active recipe
-                setActiveRecipe(activeRecipe);
+                // Parse the steps, sorted by the index in the key property
+                activeRecipe.Steps = Array.from(document.getElementsByClassName("step-row")).sort(
+                    (a, b) => a.key - b.key
+                ).map((step) => {
+                    return HtmlSanitizer.SanitizeHtml(step.getElementsByClassName("step-text")[0].value);
+                });
 
-                // PUT or POST activeRecipe depending on whether we're creating or editing
-                if (creatingRecipe) {
+                // POST or PUT activeRecipe depending on whether we're creating or editing
+                if (activeRecipe.ID === "") {
                     // POST the recipe
                     fetch("/api/recipes", {
                         method: "POST",
@@ -468,9 +434,7 @@
                         .then((response) => response.json())
                         .then((data) => {
                             // Update the active recipe with the new ID
-                            activeRecipe = Object.assign({}, activeRecipe);
-                            activeRecipe.ID = data.ID;
-                            setActiveRecipe(activeRecipe);
+                            setActiveRecipeID(data.ID);
                         });
                 } else {
                     // PUT the recipe
@@ -485,72 +449,125 @@
 
                 // End editing mode
                 setEditMode(false);
-                setCreatingRecipe(false);
 
                 // Refresh the recipes list
-                setRefreshRecipeList(!refreshRecipeList);
+                setRefreshRecipes(!refreshRecipes);
             }
 
-            return <div>
-                <div class="mt-3 mb-3">
-                    <h2 contentEditable={true} ref={nameRef}
-                        onKeyDown={handleEditNameKeyDown} class="text-editable rounded">
-                        {activeRecipe.Name}
-                    </h2>
+            return <form onSubmit={handleSubmit} className="mt-3">
+                <div class="form-group mt-3 mb-3">
+                    <input type="text" className="form-control" id="name" placeholder="Enter name" defaultValue={activeRecipe.Name} required={true}/>
+                </div>
+                <div class="form-group">
                     {activeRecipe.Tags.map((tag) => (
                         <span
                             key={tag}
-                            className="badge badge-pill badge-light ml-3 text-editable"
+                            className="badge badge-pill badge-light ml-1 text-editable"
                             id={tag}
                         >
-                            <span className="mr-1 t-weight-bold text-primary" id={tag} onClick={handleRemoveTag}>&times;</span>
-                            <span id={tag} contentEditable={true} onKeyDown={handleEditTagKeyDown}>{tag}</span>
+                            <span className="mr-1 t-weight-bold text-primary"
+                                id={tag} onClick={handleRemoveTag}>
+                                &times;
+                            </span>
+                            <span id={tag} className="tag-text" contentEditable={true} onKeyDown={handleTagOnBlur}>
+                                {tag}
+                            </span>
                         </span>
                     ))}
                     <span
                         key="addTag"
-                        className="badge badge-pill badge-light ml-3 text-editable"
+                        className="badge badge-pill badge-light ml-1 text-editable tag-text"
                         contentEditable={true}
                         onKeyDown={handleAddTagKeyDown}
                         onFocus={(event) => event.target.innerText = " "}
+                        onBlur={handleTagOnBlur}
                     >
                         + Add tag
                     </span>
                 </div>
-                <div>
+                <div class="form-group">
                     <h3>Ingredients</h3>
-                    <textarea class="rounded text-editable" style={{ width: "100%" }}
-                        id="ingredients-list"
-                        ref={ingredientsTextareaRef}
-                        rows={activeRecipe.Ingredients.length + 1}
-                        defaultValue={activeRecipe.Ingredients.map((ingredient) =>
-                            ("- "
-                            + ingredient.Name
-                            + (ingredient.Quantity !== "" ? ":" : "")
-                            + " "
-                            + ingredient.Quantity)).join("\n")}>
-                    </textarea>
+                    {activeRecipe.Ingredients.map((ingredient, index) => (
+                        <div className="form-group form-inline ingredient-row" key={ingredient.Name}>
+                            <span className="t-weight-bold badge badge-secondary col-md-1"
+                                id={ingredient.Name} onClick={(event) => handleRemoveIngredient(event, index)}>
+                                &times;
+                            </span>
+                            <input type="number" className="form-control col-md-2 ingredient-quantity"
+                                placeholder="#" defaultValue={ingredient.Quantity}
+                                onBlur={(event) => handleUpdateIngredient(event, index, "Quantity")} />
+                            <input type="text" className="form-control col-md-3 ingredient-unit"
+                                placeholder="Unit" defaultValue={ingredient.Unit}
+                                onBlur={(event) => handleUpdateIngredient(event, index, "Unit")} />
+                            <input type="text" className="form-control col-md-6 ingredient-name"
+                                placeholder="Name" defaultValue={ingredient.Name}
+                                onBlur={(event) => handleUpdateIngredient(event, index, "Name")} />
+                        </div>
+                    ))}
+                    <div className="form-group form-inline" key="new-ingredient">
+                        <span className="t-weight-bold badge badge-secondary col-md-1"
+                            onClick={handleAddIngredient}>+</span>
+                    </div>
                 </div>
-                <div>
-                    <h3>Instructions</h3>
-                    <textarea class="rounded text-editable" style={{ width: "100%" }}
-                        id="steps-list"
-                        ref={stepsTextareaRef}
-                        rows={activeRecipe.Steps.length + 1}
-                        defaultValue={activeRecipe.Steps.map((step) =>
-                            ("- " + step)).join("\n")}>
-                    </textarea>
+                <div class="form-group">
+                    <h3>Steps</h3>
+                    {activeRecipe.Steps.map((step, index) => (
+                        <div className="form-group form-inline step-row" key={step}>
+                            <span className="t-weight-bold badge badge-secondary col-md-1"
+                                id={step} onClick={(event) => handleRemoveStep(event, index)}>
+                                &times;
+                            </span>
+                            <textarea className="form-control rounded col-md-11 step-text"
+                                key={index}
+                                placeholder="Example step" defaultValue={step}
+                                onBlur={(event) => handleUpdateStep(event, index)}
+                                style={{ width: "100%" }} />
+                        </div>
+                    ))}
+                    <div className="form-group form-inline" key="new-step">
+                        <span className="t-weight-bold badge badge-secondary col-md-1"
+                            onClick={handleAddStep}>+</span>
+                    </div>
                 </div>
-                <div>
-                    <button type="button" onClick={handleSaveButton} class="btn btn-primary mb-3 mr-1">{creatingRecipe ? "Create" : "Save"} Recipe</button>
-                    <button type="button" onClick={handleCancelButton} class="btn btn-secondary mb-3 mr-1">Cancel</button>
-                </div>
-            </div>
+                <button type="submit" className="btn btn-primary mb-3 mr-1">{activeRecipe.ID == "" ? "Create" : "Save"}</button>
+                <button className="btn btn-secondary mb-3 mr-1" onClick={handleCancelButton}>Cancel</button>
+            </form>
+
+            // return <div>
+            //     <div>
+            //         <h3>Ingredients</h3>
+            //         <textarea class="rounded text-editable" style={{ width: "100%" }}
+            //             id="ingredients-list"
+            //             ref={ingredientsTextareaRef}
+            //             rows={activeRecipe.Ingredients.length + 1}
+            //             defaultValue={activeRecipe.Ingredients.map((ingredient) =>
+            //                 ("- "
+            //                 + ingredient.Name
+            //                 + (ingredient.Quantity !== "" ? ":" : "")
+            //                 + " "
+            //                 + ingredient.Quantity)).join("\n")}>
+            //         </textarea>
+            //     </div>
+            //     <div>
+            //         <h3>Instructions</h3>
+            //         <textarea class="rounded text-editable" style={{ width: "100%" }}
+            //             id="steps-list"
+            //             ref={stepsTextareaRef}
+            //             rows={activeRecipe.Steps.length + 1}
+            //             defaultValue={activeRecipe.Steps.map((step) =>
+            //                 ("- " + step)).join("\n")}>
+            //         </textarea>
+            //     </div>
+            //     <div>
+            //         <button type="button" onClick={handleSaveButton} class="btn btn-primary mb-3 mr-1">{creatingRecipe ? "Create" : "Save"} Recipe</button>
+            //         <button type="button" onClick={handleCancelButton} class="btn btn-secondary mb-3 mr-1">Cancel</button>
+            //     </div>
+            // </div>
         }
 
-        function RecipeDisplayPane({ activeRecipe, setActiveRecipe, setEditMode }) {
+        function RecipeDisplayPane({ activeRecipe, setActiveRecipe, setEditMode, refreshRecipes, setRefreshRecipes }) {
             // If no recipe is selected, render an empty div
-            if (activeRecipe === {} || activeRecipe.Name === undefined) {
+            if (activeRecipe === {} || activeRecipe === null || activeRecipe.ID === "") {
                 return <div class="mt-3 mb-3"></div>
             }
 
@@ -568,33 +585,31 @@
             function handleAddNewComment(event) {
                 event.preventDefault();
 
-                // Get the author and comment
+                // Get the author and comment and make a new comment object
                 const author = event.target.elements.author.value;
                 const comment = event.target.elements.comment.value;
-                
-                // Add to the active recipe
-                activeRecipe = Object.assign({}, activeRecipe);
-                activeRecipe.Comments.push({
+                const commentObj = {
                     Author: author,
                     Comment: comment,
                     Date: new Date(),
-                });
+                }
 
-                // PUT the recipe to update it
-                fetch("/api/recipes/id/" + activeRecipe.ID, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(activeRecipe),
-                });
+                // TODO make an endpoint for adding a comment to a recipe
+                // // PUT the recipe to update it
+                // fetch("/api/recipes/id/" + activeRecipe.ID, {
+                //     method: "PUT",
+                //     headers: {
+                //         "Content-Type": "application/json",
+                //     },
+                //     body: JSON.stringify(activeRecipe),
+                // });
 
                 // Clear the form text
                 event.target.elements.author.value = "";
                 event.target.elements.comment.value = "";
 
-                // Update the active recipe
-                setActiveRecipe(activeRecipe);
+                // Refresh
+                setRefreshRecipes(!refreshRecipes);
             }
 
             return <div>
@@ -603,7 +618,7 @@
                     {activeRecipe.Tags.map((tag) => (
                         <span
                             key={tag}
-                            className="badge badge-pill badge-light ml-3"
+                            className="badge badge-pill badge-light ml-1"
                         >
                             {tag}
                         </span>
@@ -614,7 +629,7 @@
                     <ul>
                         {activeRecipe.Ingredients.map((ingredient) => (
                             <li key={ingredient.Name}>
-                                {ingredient.Name}{ingredient.Quantity !== "" ? ":" : ""} {ingredient.Quantity}
+                                {ingredient.Quantity} {ingredient.Name}
                             </li>
                         ))}
                     </ul>
@@ -652,18 +667,18 @@
                         ))}
                     </div>
                     <form onSubmit={handleAddNewComment} className="mt-3">
-                    <div class="form-group">
-                        <label htmlFor="comment">Add a comment:</label>
-                        <textarea
-                        id="comment"
-                        name="comment"
-                        class="form-control"
-                        placeholder="Comment"
-                        required
-                        />
-                        <input class="form-control" id="author" placeholder="Author"/>
-                    </div>
-                    <button type="submit" className="btn btn-primary">Submit</button>
+                        <div class="form-group">
+                            <label htmlFor="comment">Add a comment:</label>
+                            <textarea
+                                id="comment"
+                                name="comment"
+                                class="form-control"
+                                placeholder="Comment"
+                                required
+                            />
+                            <input class="form-control" id="author" placeholder="Author" />
+                        </div>
+                        <button type="submit" className="btn btn-primary">Submit</button>
                     </form>
                 </div>
             </div>
