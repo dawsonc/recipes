@@ -266,6 +266,7 @@
                     return;
                 }
 
+                console.log(activeRecipeID)
                 fetch("/api/recipes/id/" + activeRecipeID)
                     .then((response) => response.json())
                     .then((data) => {
@@ -280,6 +281,7 @@
                     refreshRecipes={refreshRecipes} setRefreshRecipes={setRefreshRecipes} />
             } else {
                 return <RecipeDisplayPane activeRecipe={activeRecipe} setEditMode={setEditMode}
+                    activeRecipeID={activeRecipeID} setActiveRecipeID={setActiveRecipeID}
                     refreshRecipes={refreshRecipes} setRefreshRecipes={setRefreshRecipes} />
             }
         }
@@ -345,6 +347,30 @@
                 setActiveRecipe(activeRecipe);
             }
 
+            function handleIngredientKeydown(event, index) {
+                // If the user hits enter, focus on the next ingredient
+                if (event.key === "Enter") {
+                    event.preventDefault();
+
+                    // If this is the last ingredient, add a new ingredient
+                    if (index === activeRecipe.Ingredients.length - 1) {
+                        event.target.blur();
+
+                        // Add the ingredient after the current event loop
+                        // This is necessary because the blur event will fire before the
+                        // enter event, and we want to wait until after the blur event
+                        // to add the ingredient
+                        setTimeout(() => {
+                            handleAddIngredient(event);
+                        }, 0);
+                    } else {
+                        // Focus on the next step
+                        const newStep = document.getElementById("ingredient-unit-" + (index + 1));
+                        newStep.focus();
+                    }
+                }
+            }
+
             // Create a handler for removing ingredients
             function handleRemoveIngredient(event, index) {
                 // Remove the ingredient
@@ -367,6 +393,23 @@
                 activeRecipe = Object.assign({}, activeRecipe);
                 activeRecipe.Steps[index] = HtmlSanitizer.SanitizeHtml(event.target.value);
                 setActiveRecipe(activeRecipe);
+            }
+
+            function handleStepKeydown(event, index) {
+                // If the user hits enter, focus on the next step
+                if (event.key === "Enter") {
+                    event.preventDefault();
+
+                    // If this is the last step, add a new step
+                    if (index === activeRecipe.Steps.length - 1) {
+                        event.target.blur();
+                        handleAddStep(event);
+                    } else {
+                        // Focus on the next step
+                        const newStep = document.getElementById("step-" + (index + 1));
+                        newStep.focus();
+                    }
+                }
             }
 
             // Create a handler for removing steps
@@ -409,7 +452,7 @@
                 activeRecipe.Ingredients = Array.from(document.getElementsByClassName("ingredient-row")).map((ingredient) => {
                     return {
                         Name: HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-name")[0].value),
-                        Quantity: HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-quantity")[0].value),
+                        Quantity: Number(HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-quantity")[0].value)),
                         Unit: HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-unit")[0].value),
                     }
                 });
@@ -434,6 +477,7 @@
                         .then((response) => response.json())
                         .then((data) => {
                             // Update the active recipe with the new ID
+                            console.log(data)
                             setActiveRecipeID(data.ID);
                         });
                 } else {
@@ -456,7 +500,7 @@
 
             return <form onSubmit={handleSubmit} className="mt-3">
                 <div class="form-group mt-3 mb-3">
-                    <input type="text" className="form-control" id="name" placeholder="Enter name" defaultValue={activeRecipe.Name} required={true}/>
+                    <input type="text" className="form-control" id="name" placeholder="Enter name" defaultValue={activeRecipe.Name} required={true} />
                 </div>
                 <div class="form-group">
                     {activeRecipe.Tags.map((tag) => (
@@ -494,13 +538,18 @@
                                 &times;
                             </span>
                             <input type="number" className="form-control col-md-2 ingredient-quantity"
+                                id={"ingredient-unit-" + index}
                                 placeholder="#" defaultValue={ingredient.Quantity}
-                                onBlur={(event) => handleUpdateIngredient(event, index, "Quantity")} />
+                                onKeyDown={(event) => handleIngredientKeydown(event, index)}
+                                onBlur={(event) => handleUpdateIngredient(event, index, "Quantity")}
+                                autoFocus={index === activeRecipe.Ingredients.length - 1 && ingredient.Name === ""} />
                             <input type="text" className="form-control col-md-3 ingredient-unit"
                                 placeholder="Unit" defaultValue={ingredient.Unit}
+                                onKeyDown={(event) => handleIngredientKeydown(event, index)}
                                 onBlur={(event) => handleUpdateIngredient(event, index, "Unit")} />
                             <input type="text" className="form-control col-md-6 ingredient-name"
                                 placeholder="Name" defaultValue={ingredient.Name}
+                                onKeyDown={(event) => handleIngredientKeydown(event, index)}
                                 onBlur={(event) => handleUpdateIngredient(event, index, "Name")} />
                         </div>
                     ))}
@@ -519,8 +568,11 @@
                             </span>
                             <textarea className="form-control rounded col-md-11 step-text"
                                 key={index}
+                                id={"step-" + index}
                                 placeholder="Example step" defaultValue={step}
+                                onKeyDown={(event) => handleStepKeydown(event, index)}
                                 onBlur={(event) => handleUpdateStep(event, index)}
+                                autoFocus={index === activeRecipe.Steps.length - 1 && step === ""}
                                 style={{ width: "100%" }} />
                         </div>
                     ))}
@@ -532,40 +584,9 @@
                 <button type="submit" className="btn btn-primary mb-3 mr-1">{activeRecipe.ID == "" ? "Create" : "Save"}</button>
                 <button className="btn btn-secondary mb-3 mr-1" onClick={handleCancelButton}>Cancel</button>
             </form>
-
-            // return <div>
-            //     <div>
-            //         <h3>Ingredients</h3>
-            //         <textarea class="rounded text-editable" style={{ width: "100%" }}
-            //             id="ingredients-list"
-            //             ref={ingredientsTextareaRef}
-            //             rows={activeRecipe.Ingredients.length + 1}
-            //             defaultValue={activeRecipe.Ingredients.map((ingredient) =>
-            //                 ("- "
-            //                 + ingredient.Name
-            //                 + (ingredient.Quantity !== "" ? ":" : "")
-            //                 + " "
-            //                 + ingredient.Quantity)).join("\n")}>
-            //         </textarea>
-            //     </div>
-            //     <div>
-            //         <h3>Instructions</h3>
-            //         <textarea class="rounded text-editable" style={{ width: "100%" }}
-            //             id="steps-list"
-            //             ref={stepsTextareaRef}
-            //             rows={activeRecipe.Steps.length + 1}
-            //             defaultValue={activeRecipe.Steps.map((step) =>
-            //                 ("- " + step)).join("\n")}>
-            //         </textarea>
-            //     </div>
-            //     <div>
-            //         <button type="button" onClick={handleSaveButton} class="btn btn-primary mb-3 mr-1">{creatingRecipe ? "Create" : "Save"} Recipe</button>
-            //         <button type="button" onClick={handleCancelButton} class="btn btn-secondary mb-3 mr-1">Cancel</button>
-            //     </div>
-            // </div>
         }
 
-        function RecipeDisplayPane({ activeRecipe, setActiveRecipe, setEditMode, refreshRecipes, setRefreshRecipes }) {
+        function RecipeDisplayPane({ activeRecipe, setActiveRecipe, activeRecipeID, setActiveRecipeID, setEditMode, refreshRecipes, setRefreshRecipes }) {
             // If no recipe is selected, render an empty div
             if (activeRecipe === {} || activeRecipe === null || activeRecipe.ID === "") {
                 return <div class="mt-3 mb-3"></div>
@@ -612,6 +633,21 @@
                 setRefreshRecipes(!refreshRecipes);
             }
 
+            // Create a handler for the delete button
+            function handleDeleteButton() {
+                // DELETE the recipe
+                fetch("/api/recipes/id/" + activeRecipe.ID, {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                });
+
+                // Refresh
+                setActiveRecipeID("");
+                setRefreshRecipes(!refreshRecipes);
+            }
+
             return <div>
                 <div class="mt-3 mb-3">
                     <h2>{activeRecipe.Name}</h2>
@@ -644,7 +680,7 @@
                 </div>
                 <div>
                     <button type="button" onClick={handleEditButton} class="btn btn-secondary mb-3 mr-1">Edit Recipe</button>
-                    <button type="button" class="btn btn-danger mb-3 mr-1">Delete Recipe</button>
+                    <button type="button" onClick={handleDeleteButton} class="btn btn-warning mb-3 mr-1">Delete Recipe</button>
                 </div>
                 <div>
                     <h3>Comments</h3>

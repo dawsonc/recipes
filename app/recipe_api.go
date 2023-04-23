@@ -66,7 +66,7 @@ func AddRecipesAPI(router *gin.Engine, recipe_manager recipes.RecipeManager) {
 				return
 			}
 
-			c.JSON(http.StatusOK, gin.H{"message": "Recipe created successfully", "id": id})
+			c.JSON(http.StatusOK, gin.H{"message": "Recipe created successfully", "ID": id})
 		})
 
 		// GET /api/recipes/:id - get a recipe by ID
