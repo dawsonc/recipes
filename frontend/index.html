@@ -62,7 +62,7 @@
             // Fetch the recipe list from the server on load and again when
             // either the active tags or search query change
             React.useEffect(() => {
-                fetch('/api/recipes?tags=' + activeTags.join(',') + '&q=' + searchQuery)
+                fetch('/api/recipes?tags=' + activeTags.join(',') + '&q=' + HtmlSanitizer.SanitizeHtml(searchQuery))
                     .then(response => response.json())
                     .then(data => setRecipeList(data));
             }, [activeTags, searchQuery, refreshRecipes]);
@@ -72,7 +72,7 @@
                 fetch('/api/recipes/tags')
                     .then(response => response.json())
                     .then(data => setTags(data === null ? [] : data));
-            }, []);
+            }, [refreshRecipes]);
 
             // Function for setting the active search query based on form changes
             function handleSearchTextChange(event) {
@@ -471,7 +471,10 @@
                 activeRecipe.Name = HtmlSanitizer.SanitizeHtml(document.getElementById("name").value);
 
                 // Parse the ingredients
-                activeRecipe.Ingredients = Array.from(document.getElementsByClassName("ingredient-row")).map((ingredient) => {
+                const ingredient_rows = Array.from(document.getElementsByClassName("ingredient-row")).filter(
+                    (row) => row.getElementsByClassName("ingredient-name")[0].value !== ""
+                );
+                activeRecipe.Ingredients = ingredient_rows.map((ingredient) => {
                     return {
                         Name: HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-name")[0].value),
                         Quantity: Number(HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-quantity")[0].value)),
@@ -482,6 +485,8 @@
                 // Parse the steps, sorted by the index in the key property
                 activeRecipe.Steps = Array.from(document.getElementsByClassName("step-row")).sort(
                     (a, b) => a.key - b.key
+                ).filter(
+                    (step) => step.getElementsByClassName("step-text")[0].value !== ""
                 ).map((step) => {
                     return HtmlSanitizer.SanitizeHtml(step.getElementsByClassName("step-text")[0].value);
                 });
@@ -522,7 +527,7 @@
 
             return <form onSubmit={handleSubmit} className="mt-3">
                 <div class="form-group mt-3 mb-3">
-                    <input type="text" className="form-control" id="name" placeholder="Enter name" defaultValue={activeRecipe.Name} required={true} />
+                    <input type="text" className="form-control" id="name" placeholder="Enter recipe name" defaultValue={activeRecipe.Name} required={true} />
                 </div>
                 <div class="form-group">
                     {activeRecipe.Tags.map((tag) => (
@@ -688,7 +693,7 @@
                     <ul>
                         {activeRecipe.Ingredients.map((ingredient) => (
                             <li key={ingredient.Name}>
-                                {ingredient.Quantity} {ingredient.Name}
+                                {ingredient.Quantity === 0 ? "" : ingredient.Quantity} {ingredient.Unit} {ingredient.Name}
                             </li>
                         ))}
                     </ul>
