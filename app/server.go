@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/dawsonc/recipes/src/recipes"
@@ -11,7 +13,13 @@ func main() {
 	router := gin.Default()
 
 	// Create the recipes manager and connect to MongoDB
-	recipe_manager, err := recipes.CreateMongoRecipeManager("mongodb://localhost:27017", "recipes", "recipes")
+	dbURI := os.Getenv("DB_URI")
+	// If the environment variables are not set, use default values
+	if dbURI == "" {
+		dbURI = "mongodb://localhost:27017"
+	}
+	dbName := "recipes"
+	recipe_manager, err := recipes.CreateMongoRecipeManager(dbURI, dbName, "recipes")
 	if err != nil {
 		panic(err)
 	}
