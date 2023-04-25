@@ -153,13 +153,15 @@
             </div>
         }
 
-        function RecipeRow({ id, name, tags, setActiveRecipeID }) {
+        function RecipeRow({ id, name, author, tags, setActiveRecipeID }) {
             function handleClick() {
                 setActiveRecipeID(id);
             }
+            console.log(author)
 
             return <tr onClick={handleClick}>
                 <td>{name}</td>
+                <td><span className="badge badge-pill badge-light">{author}</span></td>
                 <td>
                     {tags.map((tag) => (
                         <span
@@ -190,6 +192,7 @@
                         <RecipeRow
                             id={recipe.ID}
                             name={recipe.Name}
+                            author={recipe.Author}
                             tags={recipe.Tags}
                             setActiveRecipeID={setActiveRecipeID}
                         />

@@ -336,7 +336,7 @@ func (m *MongoRecipeManager) SearchRecipes(
 		}
 		recipe_summaries = append(
 			recipe_summaries,
-			RecipeSummary{recipe.ID.Hex(), recipe.Name, recipe.Tags},
+			RecipeSummary{recipe.ID.Hex(), recipe.Name, recipe.Author, recipe.Tags},
 		)
 	}
 

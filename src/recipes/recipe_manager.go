@@ -24,7 +24,8 @@ type RecipeManager interface {
 
 // Define a struct for summarizing a recipe
 type RecipeSummary struct {
-	ID   string
-	Name string
-	Tags []string
+	ID     string
+	Name   string
+	Author string
+	Tags   []string
 }
