@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -84,6 +85,9 @@ func AddRecipesAPI(router *gin.Engine, recipe_manager recipes.RecipeManager) {
 				return
 			}
 
+			// Log the update
+			fmt.Printf("Created recipe with ID %s with new value %v\n", id, recipe)
+
 			c.JSON(http.StatusOK, gin.H{"message": "Recipe created successfully", "ID": id})
 		})
 
@@ -123,6 +127,9 @@ func AddRecipesAPI(router *gin.Engine, recipe_manager recipes.RecipeManager) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
+
+			// Log the update
+			fmt.Printf("Updated recipe with ID %s to new value %v\n", id, recipe)
 
 			c.JSON(http.StatusOK, gin.H{"message": "Recipe updated successfully"})
 		})

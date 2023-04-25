@@ -426,6 +426,14 @@
                 setActiveRecipe(activeRecipe);
             }
 
+            function handleEditTagKeyDown(event) {
+                // If the user hits escape or enter, cancel editing the tag
+                if (event.key === "Escape" || event.key === "Enter") {
+                    event.preventDefault();
+                    event.target.blur();
+                }
+            }
+            
             function handleAddTagKeyDown(event) {
                 // If the user hits escape, cancel editing the tag
                 if (event.key === "Escape") {
@@ -636,7 +644,7 @@
                                 &times;
                             </span>
                             <span id={tag} className="tag-text" contentEditable={true}
-                                onBlur={handleEditTagOnBlur}>
+                                onBlur={handleEditTagOnBlur} onKeyDown={handleEditTagKeyDown}>
                                 {tag}
                             </span>
                         </span>
@@ -758,13 +766,15 @@
 
             // Create a handler for the delete button
             function handleDeleteButton() {
-                // DELETE the recipe
-                fetch("/api/recipes/id/" + activeRecipe.ID, {
-                    method: "DELETE",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                });
+                alert("feature temporarily disabled")
+                // TODO re-enable this when I have better logging to undo it.
+                // // DELETE the recipe
+                // fetch("/api/recipes/id/" + activeRecipe.ID, {
+                //     method: "DELETE",
+                //     headers: {
+                //         "Content-Type": "application/json",
+                //     },
+                // });
 
                 // Refresh
                 setActiveRecipeID("");
