@@ -115,32 +115,40 @@
                 browserStyle = {};
             }
 
-            return <div class="row">
-                <div id="recipeBrowser" class="col-md-6" style={browserStyle}>
-                    <div class="input-group mb-3">
-                        <input type="text" class="form-control" placeholder="Search for a recipe" aria-
-                            label="Search for a recipe" aria-describedby="button-addon2"
-                            onChange={handleSearchTextChange}></input>
+            return <div>
+                <div class="row">
+                    <div id="recipeBrowser" class="col-md-6" style={browserStyle}>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" placeholder="Search for a recipe" aria-
+                                label="Search for a recipe" aria-describedby="button-addon2"
+                                onChange={handleSearchTextChange}></input>
+                        </div>
+
+                        <div id="tagList" class="mb-3">
+                            <TagList tags={tags} activeTags={activeTags} setActiveTags={setActiveTags} />
+                        </div>
+
+                        <div id="authorList" class="mb-3">
+                            <AuthorList authors={authors} activeAuthors={activeAuthors} setActiveAuthors={setActiveAuthors} />
+                        </div>
+
+                        <button type="button" onClick={handleAddRecipeButton} class="btn btn-primary col-md-12 mb-3">+ Add Recipe</button>
+
+                        <div id="recipeList" class="col-md-12" style={{ "height": 600 + "px" }}>
+                            <RecipeList recipes={recipeList} setActiveRecipeID={setActiveRecipeID} editMode={editMode} />
+                        </div>
                     </div>
-
-                    <div id="tagList" class="mb-3">
-                        <TagList tags={tags} activeTags={activeTags} setActiveTags={setActiveTags} />
-                    </div>
-
-                    <div id="authorList" class="mb-3">
-                        <AuthorList authors={authors} activeAuthors={activeAuthors} setActiveAuthors={setActiveAuthors} />
-                    </div>
-
-                    <button type="button" onClick={handleAddRecipeButton} class="btn btn-primary col-md-12 mb-3">+ Add Recipe</button>
-
-                    <div id="recipeList" class="col-md-12" style={{ "height": 600 + "px" }}>
-                        <RecipeList recipes={recipeList} setActiveRecipeID={setActiveRecipeID} editMode={editMode} />
+                    <div id="recipeFocusPane" class="col-md-6 border rounded">
+                        <RecipePane activeRecipeID={activeRecipeID} setActiveRecipeID={setActiveRecipeID}
+                            editMode={editMode} setEditMode={setEditMode}
+                            refreshRecipes={refreshRecipes} setRefreshRecipes={setRefreshRecipes} />
                     </div>
                 </div>
-                <div id="recipeFocusPane" class="col-md-6 border rounded">
-                    <RecipePane activeRecipeID={activeRecipeID} setActiveRecipeID={setActiveRecipeID}
-                        editMode={editMode} setEditMode={setEditMode}
-                        refreshRecipes={refreshRecipes} setRefreshRecipes={setRefreshRecipes} />
+                <div>
+                    <p class="text-muted">
+                        Found a bug? Have a feature request?
+                        <a href="https://github.com/dawsonc/recipes/issues" class="ml-1">Open an issue!</a>
+                    </p>
                 </div>
             </div>
         }
