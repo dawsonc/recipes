@@ -16,6 +16,7 @@ type Recipe struct {
 	Steps       []string           `bson:"steps"`
 	Tags        []string           `bson:"tags"`
 	Comments    []Comments         `bson:"comments"`
+	Author      string             `bson:"author"`
 }
 
 type Ingredient struct {

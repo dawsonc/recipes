@@ -50,6 +50,10 @@
             const [tags, setTags] = React.useState([]);
             // List of active tags used to filter recipe list
             const [activeTags, setActiveTags] = React.useState([]);
+            // List of all authors
+            const [authors, setAuthors] = React.useState([]);
+            // List of active authors used to filter recipe list
+            const [activeAuthors, setActiveAuthors] = React.useState([]);
             // Search query used to filter recipe list
             const [searchQuery, setSearchQuery] = React.useState("");
             // Active recipe to display in the recipe pane
@@ -62,16 +66,24 @@
             // Fetch the recipe list from the server on load and again when
             // either the active tags or search query change
             React.useEffect(() => {
-                fetch('/api/recipes?tags=' + activeTags.join(',') + '&q=' + HtmlSanitizer.SanitizeHtml(searchQuery))
+                fetch('/api/recipes?tags=' + activeTags.join(',')
+                    + '&q=' + HtmlSanitizer.SanitizeHtml(searchQuery)
+                    + "&authors=" + activeAuthors.join(','))
                     .then(response => response.json())
-                    .then(data => setRecipeList(data));
-            }, [activeTags, searchQuery, refreshRecipes]);
+                    .then(data => setRecipeList("error" in data ? [] : data));
+            }, [activeTags, activeAuthors, searchQuery, refreshRecipes]);
 
-            // Also fetch a list of all tags on load
+            // Also fetch a list of all tags and authors on load
             React.useEffect(() => {
                 fetch('/api/recipes/tags')
                     .then(response => response.json())
-                    .then(data => setTags(data === null ? [] : data));
+                    .then(data => setTags(data === null ? [] : data.sort()));
+            }, [refreshRecipes]);
+
+            React.useEffect(() => {
+                fetch('/api/recipes/authors')
+                    .then(response => response.json())
+                    .then(data => setAuthors(data === null ? [] : data));
             }, [refreshRecipes]);
 
             // Function for setting the active search query based on form changes
@@ -115,9 +127,13 @@
                         <TagList tags={tags} activeTags={activeTags} setActiveTags={setActiveTags} />
                     </div>
 
+                    <div id="authorList" class="mb-3">
+                        <AuthorList authors={authors} activeAuthors={activeAuthors} setActiveAuthors={setActiveAuthors} />
+                    </div>
+
                     <button type="button" onClick={handleAddRecipeButton} class="btn btn-primary col-md-12 mb-3">+ Add Recipe</button>
 
-                    <div id="recipeList" class="col-md-12" style={{ "height": 800 + "px" }}>
+                    <div id="recipeList" class="col-md-12" style={{ "height": 600 + "px" }}>
                         <RecipeList recipes={recipeList} setActiveRecipeID={setActiveRecipeID} editMode={editMode} />
                     </div>
                 </div>
@@ -237,6 +253,70 @@
             </div>
         }
 
+        function AuthorList({ authors, activeAuthors, setActiveAuthors }) {
+            // Function for getting a list of all inactive authors
+            function inactiveAuthors(authors, activeAuthors) {
+                return authors.filter((author) => !activeAuthors.includes(author));
+            }
+
+            // Function for activating an author (adding them to the active authors list if they're
+            // not already there)
+            function activateAuthor(author, activeAuthors) {
+                if (activeAuthors.includes(author)) {
+                    return;
+                }
+                setActiveAuthors([...activeAuthors, author]);
+            }
+
+            // Function for deactivating an author (removing them from the active authors list)
+            function deactivateAuthor(author, activeAuthors) {
+                setActiveAuthors(activeAuthors.filter((a) => a !== author));
+            }
+
+            // Add onClick handlers to activate/deactivate authors when clicked
+            function handleClickActivate(author) {
+                activateAuthor(author, activeAuthors);
+            }
+            function handleClickDeactivate(author) {
+                deactivateAuthor(author, activeAuthors);
+            }
+            function handleClickDeactivateAll() {
+                setActiveAuthors([]);
+            }
+
+            // Return a span for each author in authors
+            // Active authors go first in an emphasized color
+            // Inactive authors go later in light color
+            return <div>
+                {activeAuthors.map((author) => (
+                    <span
+                        key={author}
+                        className="badge badge-pill badge-primary mr-1"
+                        onClick={() => handleClickDeactivate(author)}
+                    >
+                        {author}
+                    </span>
+                ))}
+                {inactiveAuthors(authors, activeAuthors).map((author) => (
+                    <span
+                        key={author}
+                        className="badge badge-pill badge-light mr-1"
+                        onClick={() => handleClickActivate(author)}
+                    >
+                        {author}
+                    </span>
+                ))}
+                {activeAuthors.length > 0 ? <span
+                    key="clear-authors"
+                    className="badge badge-pill badge-dark mr-1"
+                    onClick={handleClickDeactivateAll}
+                >
+                    clear all
+                </span> : ""}
+            </div>
+        }
+
+
         function RecipePane({
             activeRecipeID,
             editMode,
@@ -250,7 +330,6 @@
             const [activeRecipe, setActiveRecipe] = React.useState(null);
 
             React.useEffect(() => {
-                console.log(activeRecipeID)
                 if (activeRecipeID === null) {
                     setActiveRecipe(null);
                     return;
@@ -266,7 +345,6 @@
                     return;
                 }
 
-                console.log(activeRecipeID)
                 fetch("/api/recipes/id/" + activeRecipeID)
                     .then((response) => response.json())
                     .then((data) => {
@@ -289,7 +367,7 @@
         function RecipeEditPane({ activeRecipe, setActiveRecipe, setActiveRecipeID, setEditMode, refreshRecipes, setRefreshRecipes }) {
             // Create a handler for disabling newlines in fields where we don't want those
             // (instead, we'd like to stop editing when the user hits enter)
-            function handleEditNameKeyDown(event) {
+            function handleBlurOnEnter(event) {
                 if (event.key === "Enter") {
                     event.preventDefault();
                     event.target.blur();
@@ -470,6 +548,9 @@
                 // Parse the name
                 activeRecipe.Name = HtmlSanitizer.SanitizeHtml(document.getElementById("name").value);
 
+                // Parse the author
+                activeRecipe.Author = HtmlSanitizer.SanitizeHtml(document.getElementById("author").value);
+
                 // Parse the ingredients
                 const ingredient_rows = Array.from(document.getElementsByClassName("ingredient-row")).filter(
                     (row) => row.getElementsByClassName("ingredient-name")[0].value !== ""
@@ -504,7 +585,6 @@
                         .then((response) => response.json())
                         .then((data) => {
                             // Update the active recipe with the new ID
-                            console.log(data)
                             setActiveRecipeID(data.ID);
                         });
                 } else {
@@ -527,7 +607,14 @@
 
             return <form onSubmit={handleSubmit} className="mt-3">
                 <div class="form-group mt-3 mb-3">
-                    <input type="text" className="form-control" id="name" placeholder="Enter recipe name" defaultValue={activeRecipe.Name} required={true} />
+                    <input type="text" className="form-control" id="name"
+                        placeholder="Enter recipe name" defaultValue={activeRecipe.Name}
+                        required={true} onKeyDown={handleBlurOnEnter}/>
+                </div>
+                <div class="form-group mt-3 mb-3">
+                    <input type="text" className="form-control" id="author"
+                        placeholder="Enter author" defaultValue={activeRecipe.Author}
+                        required={true} onKeyDown={handleBlurOnEnter}/>
                 </div>
                 <div class="form-group">
                     {activeRecipe.Tags.map((tag) => (
@@ -582,8 +669,8 @@
                         </div>
                     ))}
                     <div className="form-group form-inline" key="new-ingredient">
-                        <span className="t-weight-bold badge badge-secondary col-md-1"
-                            onClick={handleAddIngredient}>+</span>
+                        <span className="t-weight-bold badge badge-secondary col-md-3"
+                            onClick={handleAddIngredient}>+ Add ingredient</span>
                     </div>
                 </div>
                 <div class="form-group">
@@ -605,8 +692,8 @@
                         </div>
                     ))}
                     <div className="form-group form-inline" key="new-step">
-                        <span className="t-weight-bold badge badge-secondary col-md-1"
-                            onClick={handleAddStep}>+</span>
+                        <span className="t-weight-bold badge badge-secondary col-md-3"
+                            onClick={handleAddStep}>+ Add step</span>
                     </div>
                 </div>
                 <button type="submit" className="btn btn-primary mb-3 mr-1">{activeRecipe.ID == "" ? "Create" : "Save"}</button>
@@ -678,7 +765,10 @@
 
             return <div>
                 <div class="mt-3 mb-3">
-                    <h2>{activeRecipe.Name}</h2>
+                    <div class="d-flex justify-content-between">
+                        <span class="h2">{activeRecipe.Name}</span>
+                        <span class="h4"><span class="text-muted">by </span>{activeRecipe.Author}</span>
+                    </div>
                     {activeRecipe.Tags.map((tag) => (
                         <span
                             key={tag}
@@ -742,7 +832,7 @@
                             />
                             <input class="form-control" id="author" placeholder="Author" />
                         </div>
-                        <button type="submit" className="btn btn-primary">Submit</button>
+                        <button type="submit" className="btn btn-primary mb-3">Submit</button>
                     </form>
                 </div>
             </div>

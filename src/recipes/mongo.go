@@ -241,8 +241,51 @@ func (m *MongoRecipeManager) GetTags() ([]string, error) {
 	return return_tags, nil
 }
 
-// SearchRecipes returns all recipes that match the given query string and tags
-func (m *MongoRecipeManager) SearchRecipes(query string, tags []string) ([]RecipeSummary, error) {
+// GetAuthors returns all authors in the recipe manager
+func (m *MongoRecipeManager) GetAuthors() ([]string, error) {
+	// Get the collection handle
+	collection := m.client.Database(m.dbName).Collection(m.collectionName)
+
+	// Use a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Find all documents in the collection
+	cursor, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	// Decode each document into a Recipe object and collect tags as keys in a map
+	authors := make(map[string]bool)
+	for cursor.Next(ctx) {
+		var recipe Recipe
+		if err := cursor.Decode(&recipe); err != nil {
+			return nil, err
+		}
+
+		authors[recipe.Author] = true
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	// Convert to slice
+	var return_authors []string
+	for author := range authors {
+		return_authors = append(return_authors, author)
+	}
+
+	return return_authors, nil
+}
+
+// SearchRecipes returns all recipes that match the given query string, tags, and authors
+// Recipes must match all tags but any of the authors
+func (m *MongoRecipeManager) SearchRecipes(
+	query string, tags []string, authors []string,
+) ([]RecipeSummary, error) {
 	// Get the collection handle
 	collection := m.client.Database(m.dbName).Collection(m.collectionName)
 
@@ -259,9 +302,17 @@ func (m *MongoRecipeManager) SearchRecipes(query string, tags []string) ([]Recip
 	} else {
 		tags_filter = bson.M{"tags": bson.M{"$exists": true}}
 	}
+	var authors_filter bson.M
+	if len(authors) > 0 {
+		// Only search for authors if we've been given a list of authors to search
+		authors_filter = bson.M{"author": bson.M{"$in": authors}}
+	} else {
+		authors_filter = bson.M{}
+	}
 	filter := bson.M{
 		"$and": []bson.M{
 			tags_filter,
+			authors_filter,
 			{"$or": []bson.M{
 				{"title": query_filter},
 				{"description": query_filter},
