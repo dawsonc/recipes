@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -13,14 +14,13 @@ func AddRecipesAPI(router *gin.Engine, recipe_manager recipes.RecipeManager) {
 	// Provide a RESTful API for recipes
 	recipesAPI := router.Group("/api/recipes")
 	{
-		// GET /api/recipes - get recipes, possibly with filters
-		// e.g. /api/recipes?id=ID
+		// GET /api/recipes - get a list of recipes, possibly with filters
 		// e.g. /api/recipes?tags=tag1,tag2
-		// e.g. /api/recipes?q=search_term&tags=tag1,tag2
-		recipesAPI.GET("/", func(c *gin.Context) {
+		// e.g. /api/recipes?q=search_term&tags=tag1,tag2&authors=author1,author2
+		recipesAPI.GET("/search", func(c *gin.Context) {
 			// Allow optional query strings
-			id := c.Query("id")
 			tags := strings.Split(c.Query("tags"), ",")
+			authors := strings.Split(c.Query("authors"), ",")
 			search_term := c.Query("q")
 
 			// If the tags string is empty, then tags will have a single element that
@@ -29,26 +29,13 @@ func AddRecipesAPI(router *gin.Engine, recipe_manager recipes.RecipeManager) {
 				tags = []string{}
 			}
 
-			// Get recipes based on the provided queries
-			var queried_recipes []recipes.Recipe
-			var err error
-			switch {
-			case id != "":
-				// Get the recipe from the database with the given ID
-				var recipe recipes.Recipe
-				recipe, err = recipe_manager.GetRecipeByID(id)
-				// Wrap the recipe in a single element slice
-				queried_recipes = []recipes.Recipe{recipe}
-			case search_term != "":
-				// Get all recipes that match the given tags and search term
-				queried_recipes, err = recipe_manager.SearchRecipes(search_term, tags)
-			case len(tags) > 0:
-				// Get all recipes that match the given tags
-				queried_recipes, err = recipe_manager.GetRecipesByTags(tags)
-			default:
-				// Get all recipes from the database
-				queried_recipes, err = recipe_manager.GetAllRecipes()
+			// Same for authors
+			if len(authors) == 1 && authors[0] == "" {
+				authors = []string{}
 			}
+
+			// Get recipes based on the provided queries
+			queried_recipes, err := recipe_manager.SearchRecipes(search_term, tags, authors)
 
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -70,6 +57,18 @@ func AddRecipesAPI(router *gin.Engine, recipe_manager recipes.RecipeManager) {
 			c.JSON(http.StatusOK, tags)
 		})
 
+		// GET /api/recipes/authors - get all authors
+		recipesAPI.GET("/authors", func(c *gin.Context) {
+			// Get all authors from the database
+			authors, err := recipe_manager.GetAuthors()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+
+			c.JSON(http.StatusOK, authors)
+		})
+
 		// POST /api/recipes - create a new recipe
 		recipesAPI.POST("/", func(c *gin.Context) {
 			// Get the recipe from the request
@@ -86,7 +85,10 @@ func AddRecipesAPI(router *gin.Engine, recipe_manager recipes.RecipeManager) {
 				return
 			}
 
-			c.JSON(http.StatusOK, gin.H{"message": "Recipe created successfully", "id": id})
+			// Log the update
+			fmt.Printf("Created recipe with ID %s with new value %v\n", id, recipe)
+
+			c.JSON(http.StatusOK, gin.H{"message": "Recipe created successfully", "ID": id})
 		})
 
 		// GET /api/recipes/:id - get a recipe by ID
@@ -125,6 +127,9 @@ func AddRecipesAPI(router *gin.Engine, recipe_manager recipes.RecipeManager) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
+
+			// Log the update
+			fmt.Printf("Updated recipe with ID %s to new value %v\n", id, recipe)
 
 			c.JSON(http.StatusOK, gin.H{"message": "Recipe updated successfully"})
 		})

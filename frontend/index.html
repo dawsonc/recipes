@@ -5,6 +5,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Recipe World</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/app/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/app/favicon-16x16.png">
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
@@ -18,6 +20,17 @@
 
     <!-- Babel NOT FOR PROD -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+
+    <!-- sanitizer - should find a way to include this (or similar) via npm/webpack in the long term -->
+    <script src="https://cdn.jsdelivr.net/gh/jitbit/HtmlSanitizer@master/HtmlSanitizer.js"></script>
+
+    <!-- Custom styling -->
+    <style>
+        .text-editable {
+            font-family: Consolas, Courier, monospace;
+            border: 1px solid #ccc;
+        }
+    </style>
 </head>
 
 <body>
@@ -35,39 +48,175 @@
             // Shared state for the application
             // List of recipes to display
             const [recipeList, setRecipeList] = React.useState([]);
-            // Active recipe to display in the recipe pane
-            const [activeRecipe, setActiveRecipe] = React.useState({});
             // List of all tags
             const [tags, setTags] = React.useState([]);
             // List of active tags used to filter recipe list
             const [activeTags, setActiveTags] = React.useState([]);
+            // List of all authors
+            const [authors, setAuthors] = React.useState([]);
+            // List of active authors used to filter recipe list
+            const [activeAuthors, setActiveAuthors] = React.useState([]);
             // Search query used to filter recipe list
             const [searchQuery, setSearchQuery] = React.useState("");
+            // Active recipe to display in the recipe pane
+            const [activeRecipeID, setActiveRecipeID] = React.useState("");
             // Whether or not the app is in editing mode
             const [editMode, setEditMode] = React.useState(false);
-            // Whether or not the user is creating a new recipe
-            const [creatingRecipe, setCreatingRecipe] = React.useState(false);
+            // Whether or not we need to refresh the list of recipes
+            const [refreshRecipes, setRefreshRecipes] = React.useState(false);
 
             // Fetch the recipe list from the server on load and again when
             // either the active tags or search query change
             React.useEffect(() => {
-                fetch('/api/recipes?tags=' + activeTags.join(',') + '&q=' + searchQuery)
+                fetch('/api/recipes/search?tags=' + activeTags.join(',')
+                    + '&q=' + HtmlSanitizer.SanitizeHtml(searchQuery)
+                    + "&authors=" + activeAuthors.join(','))
                     .then(response => response.json())
-                    .then(data => setRecipeList(data));
-            }, [activeTags, searchQuery]);
+                    .then(data => setRecipeList(data === null || "error" in data ? [] : data));
+            }, [activeTags, activeAuthors, searchQuery, refreshRecipes]);
 
-            // Also fetch a list of all tags on load
+            // Also fetch a list of all tags and authors on load
             React.useEffect(() => {
                 fetch('/api/recipes/tags')
                     .then(response => response.json())
-                    .then(data => setTags(data));
-            }, []);
+                    .then(data => setTags(data === null ? [] : data.sort()));
+            }, [refreshRecipes]);
 
-            // Function for setting the active recipe by name
-            function setActiveRecipeByName(name) {
-                setActiveRecipe(recipeList.find((recipe) => recipe.Name === name));
+            React.useEffect(() => {
+                fetch('/api/recipes/authors')
+                    .then(response => response.json())
+                    .then(data => setAuthors(data === null ? [] : data.sort()));
+            }, [refreshRecipes]);
+
+            // Function for setting the active search query based on form changes
+            function handleSearchTextChange(event) {
+                setSearchQuery(event.target.value);
             }
 
+            // Function for clearing the search query
+            function handleClearSearchClick() {
+                setText('');
+            }
+
+            // Function for toggling edit and creating mode on when the "Add Recipe"
+            // button is clicked
+            function handleAddRecipeButton() {
+                // Set the active recipe id to a blank id
+                setActiveRecipeID("");
+
+                // Activate editing mode and creating mode
+                setEditMode(true);
+            }
+
+            // Disable the recipeBrowser when in edit mode
+            // Grey out the recipe list and make it non-interactive if we're in edit mode
+            var browserStyle;
+            if (editMode) {
+                browserStyle = { "opacity": 0.5, "pointer-events": "none" };
+            } else {
+                browserStyle = {};
+            }
+
+            return <div>
+                <div class="row">
+                    <div id="recipeBrowser" class="col-md-6" style={browserStyle}>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" placeholder="Search for a recipe" aria-
+                                label="Search for a recipe" aria-describedby="button-addon2"
+                                onChange={handleSearchTextChange}></input>
+                        </div>
+
+                        <div id="tagList" class="mb-3">
+                            <TagList tags={tags} activeTags={activeTags} setActiveTags={setActiveTags} />
+                        </div>
+
+                        <div id="authorList" class="mb-3">
+                            <AuthorList authors={authors} activeAuthors={activeAuthors} setActiveAuthors={setActiveAuthors} />
+                        </div>
+
+                        <button type="button" onClick={handleAddRecipeButton} class="btn btn-primary col-md-12 mb-3">+ Add Recipe</button>
+
+                        <div id="recipeList" class="col-md-12" style={{ "height": 600 + "px" }}>
+                            <RecipeList recipes={recipeList} setActiveRecipeID={setActiveRecipeID} editMode={editMode} />
+                        </div>
+                    </div>
+                    <div id="recipeFocusPane" class="col-md-6 border rounded">
+                        <RecipePane activeRecipeID={activeRecipeID} setActiveRecipeID={setActiveRecipeID}
+                            editMode={editMode} setEditMode={setEditMode}
+                            refreshRecipes={refreshRecipes} setRefreshRecipes={setRefreshRecipes} />
+                    </div>
+                </div>
+                <div>
+                    <p class="text-muted">
+                        Found a bug? Have a feature request?
+                        <a href="https://github.com/dawsonc/recipes/issues" class="ml-1">Open an issue!</a>
+                    </p>
+                </div>
+            </div>
+        }
+
+        function RecipeRow({ id, name, author, tags, setActiveRecipeID }) {
+            function handleClick() {
+                setActiveRecipeID(id);
+            }
+
+            return <tr onClick={handleClick}>
+                <td>{name}</td>
+                <td><span className="badge badge-pill badge-light">{author}</span></td>
+                <td>
+                    {tags.map((tag) => (
+                        <span
+                            key={tag}
+                            className="badge badge-pill badge-light mr-1"
+                        >
+                            {tag}
+                        </span>
+                    ))}
+                </td>
+            </tr>
+        }
+
+        function RecipeList({ recipes, setActiveRecipeID, editMode }) {
+            if (recipes == null || recipes.length === 0) {
+                return <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Author</th>
+                            <th scope="col">Tags</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>No recipes found</td>
+                        </tr>
+                    </tbody>
+                </table>
+            }
+
+            return <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Author</th>
+                        <th scope="col">Tags</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {recipes.map((recipe) => (
+                        <RecipeRow
+                            id={recipe.ID}
+                            name={recipe.Name}
+                            author={recipe.Author}
+                            tags={recipe.Tags}
+                            setActiveRecipeID={setActiveRecipeID}
+                        />
+                    ))}
+                </tbody>
+            </table>
+        }
+
+        function TagList({ tags, activeTags, setActiveTags }) {
             // Function for getting a list of all inactive tags
             function inactiveTags(tags, activeTags) {
                 return tags.filter((tag) => !activeTags.includes(tag));
@@ -87,116 +236,6 @@
                 setActiveTags(activeTags.filter((t) => t !== tag));
             }
 
-            // Function for setting the active search query based on form changes
-            function handleSearchTextChange(event) {
-                setSearchQuery(event.target.value);
-            }
-
-            // Function for clearing the search query
-            function handleClearSearchClick() {
-                setText('');
-            }
-
-            // Function for toggling edit and creating mode on when the "Add Recipe"
-            // button is clicked
-            function handleAddRecipeButton() {
-                // Set the active recipe to a blank recipe
-                setActiveRecipe({
-                    Name: "New Recipe",
-                    Description: "An example of a new recipe",
-                    Ingredients: [{ Name: "example ingredient", Quantity: "1 unit"}],
-                    Steps: ["Example step 1", "Example step 2"],
-                    Tags: [],
-                    Comments: [],
-                });
-
-                // Activate editing mode and creating mode
-                setEditMode(true);
-                setCreatingRecipe(true);
-            }
-
-            // Disable the recipeBrowser when in edit mode
-            // Grey out the recipe list and make it non-interactive if we're in edit mode
-            var browserStyle;
-            if (editMode) {
-                browserStyle = { "opacity": 0.5, "pointer-events": "none" };
-            } else {
-                browserStyle = {};
-            }
-
-            return <div class="row">
-                <div id="recipeBrowser" class="col-md-6" style={browserStyle}>
-                    <div class="input-group mb-3">
-                        <input type="text" class="form-control" placeholder="Search for a recipe" aria-
-                            label="Search for a recipe" aria-describedby="button-addon2"
-                            onChange={handleSearchTextChange}></input>
-                    </div>
-
-                    <div id="tagList" class="mb-3">
-                        <TagList tags={tags} activeTags={activeTags} inactiveTags={inactiveTags}
-                            activateTag={activateTag} deactivateTag={deactivateTag} />
-                    </div>
-
-                    <button type="button" onClick={handleAddRecipeButton} class="btn btn-primary col-md-12 mb-3">+ Add Recipe</button>
-
-                    <div id="recipeList" class="col-md-12" style={{ "height": 800 + "px" }}>
-                        <RecipeList recipes={recipeList} setActiveRecipe={setActiveRecipeByName} editMode={editMode} />
-                    </div>
-                </div>
-                <div id="recipeFocusPane" class="col-md-6 border rounded">
-                    <RecipePane activeRecipe={activeRecipe} editMode={editMode}
-                        creatingRecipe={creatingRecipe} setEditMode={setEditMode}
-                        setCreatingRecipe={setCreatingRecipe} setActiveRecipe={setActiveRecipe}/>
-                </div>
-            </div>
-        }
-
-        function RecipeRow({ key, name, tags, setActiveRecipe }) {
-            function handleClick() {
-                setActiveRecipe(name);
-            }
-
-            return <tr onClick={handleClick}>
-                <td>{name}</td>
-                <td>
-                    {tags.map((tag) => (
-                        <span
-                            key={tag}
-                            className="badge badge-pill badge-light mr-1"
-                        >
-                            {tag}
-                        </span>
-                    ))}
-                </td>
-            </tr>
-        }
-
-        function RecipeList({ recipes, setActiveRecipe, editMode }) {
-            if (recipes == null || recipes.length === 0) {
-                return <table class="table table-hover">
-                    <tbody>
-                        <tr>
-                            <td>No recipes found</td>
-                        </tr>
-                    </tbody>
-                </table>
-            }
-
-            return <table class="table table-hover">
-                <tbody>
-                    {recipes.map((recipe) => (
-                        <RecipeRow
-                            key={recipe.Name}
-                            name={recipe.Name}
-                            tags={recipe.Tags}
-                            setActiveRecipe={setActiveRecipe}
-                        />
-                    ))}
-                </tbody>
-            </table>
-        }
-
-        function TagList({ tags, activeTags, inactiveTags, activateTag, deactivateTag }) {
             // Add onClick handlers to activate/deactivate tags when clicked
             function handleClickActivate(tag) {
                 activateTag(tag, activeTags);
@@ -205,131 +244,502 @@
                 deactivateTag(tag, activeTags);
             }
             function handleClickDeactivateAll() {
-                activeTags.map((tag) => deactivateTag(tag, activeTags));
+                setActiveTags([]);
             }
 
             // Return a span for each tag in tags
             // Active tags go first in an emphasized color
             // Inactive tags go later in light color
-            return <div>
-                {activeTags.map((tag) => (
-                    <span
-                        key={tag}
-                        className="badge badge-pill badge-primary mr-1"
-                        onClick={() => handleClickDeactivate(tag)}
-                    >
-                        {tag}
-                    </span>
-                ))}
-                {inactiveTags(tags, activeTags).map((tag) => (
-                    <span
-                        key={tag}
-                        className="badge badge-pill badge-light mr-1"
-                        onClick={() => handleClickActivate(tag)}
-                    >
-                        {tag}
-                    </span>
+            return <div className="border rounded">
+                <span className="badge text-secondary mt-2 ml-2 mr-1 mb-2">Tags:</span>
+                {tags.map((tag) => (
+                    activeTags.includes(tag) ?
+                        <span
+                            key={tag}
+                            className="badge badge-pill badge-primary mr-1"
+                            onClick={() => handleClickDeactivate(tag)}
+                        >
+                            {tag}
+                        </span>
+                        :
+                        <span
+                            key={tag}
+                            className="badge badge-pill badge-light mr-1"
+                            onClick={() => handleClickActivate(tag)}
+                        >
+                            {tag}
+                        </span>
                 ))}
                 {activeTags.length > 0 ? <span
                     key="clear-tags"
                     className="badge badge-pill badge-dark mr-1"
-                    onClick={() => handleClickDeactivateAll()}
+                    onClick={handleClickDeactivateAll}
                 >
                     clear all
                 </span> : ""}
             </div>
         }
 
-        function RecipePane({activeRecipe, editMode, creatingRecipe, setEditMode, setCreatingRecipe, setActiveRecipe}){
+        function AuthorList({ authors, activeAuthors, setActiveAuthors }) {
+            // Function for getting a list of all inactive authors
+            function inactiveAuthors(authors, activeAuthors) {
+                return authors.filter((author) => !activeAuthors.includes(author));
+            }
+
+            // Function for activating an author (adding them to the active authors list if they're
+            // not already there)
+            function activateAuthor(author, activeAuthors) {
+                if (activeAuthors.includes(author)) {
+                    return;
+                }
+                setActiveAuthors([...activeAuthors, author]);
+            }
+
+            // Function for deactivating an author (removing them from the active authors list)
+            function deactivateAuthor(author, activeAuthors) {
+                setActiveAuthors(activeAuthors.filter((a) => a !== author));
+            }
+
+            // Add onClick handlers to activate/deactivate authors when clicked
+            function handleClickActivate(author) {
+                activateAuthor(author, activeAuthors);
+            }
+            function handleClickDeactivate(author) {
+                deactivateAuthor(author, activeAuthors);
+            }
+            function handleClickDeactivateAll() {
+                setActiveAuthors([]);
+            }
+
+            // Return a span for each author in authors
+            // Active authors go first in an emphasized color
+            // Inactive authors go later in light color
+            return <div className="border rounded">
+                <span className="badge text-secondary mt-2 ml-2 mr-1 mb-2">Authors:</span>
+                {authors.map((author) => (
+                    activeAuthors.includes(author) ?
+                        <span
+                            key={author}
+                            className="badge badge-pill badge-primary mr-1"
+                            onClick={() => handleClickDeactivate(author)}
+                        >
+                            {author}
+                        </span>
+                        :
+                        <span
+                            key={author}
+                            className="badge badge-pill badge-light mr-1"
+                            onClick={() => handleClickActivate(author)}
+                        >
+                            {author}
+                        </span>
+                ))}
+                {activeAuthors.length > 0 ? <span
+                    key="clear-authors"
+                    className="badge badge-pill badge-dark mr-1"
+                    onClick={handleClickDeactivateAll}
+                >
+                    clear all
+                </span> : ""}
+            </div>
+        }
+
+
+        function RecipePane({
+            activeRecipeID,
+            editMode,
+            setEditMode,
+            setActiveRecipeID,
+            refreshRecipes,
+            setRefreshRecipes
+        }) {
+            // The recipe pane has a state for the active recipe and an effect to fetch that
+            // recipe from the server when the active recipe ID changes
+            const [activeRecipe, setActiveRecipe] = React.useState(null);
+
+            React.useEffect(() => {
+                if (activeRecipeID === null) {
+                    setActiveRecipe(null);
+                    return;
+                } else if (activeRecipeID === "") {
+                    // Creating a new recipe
+                    setActiveRecipe({
+                        ID: "",
+                        Name: "",
+                        Ingredients: [],
+                        Steps: [],
+                        Tags: []
+                    });
+                    return;
+                }
+
+                fetch("/api/recipes/id/" + activeRecipeID)
+                    .then((response) => response.json())
+                    .then((data) => {
+                        setActiveRecipe(data);
+                    });
+            }, [activeRecipeID, refreshRecipes]);
+
             // Choose whether to render the display pane or the edit pane
             if (editMode) {
-                return <RecipeEditPane activeRecipe={activeRecipe} creatingRecipe={creatingRecipe} setEditMode={setEditMode} setCreatingRecipe={setCreatingRecipe} setActiveRecipe={setActiveRecipe}/>
+                return <RecipeEditPane activeRecipe={activeRecipe} setActiveRecipe={setActiveRecipe}
+                    setEditMode={setEditMode} setActiveRecipeID={setActiveRecipeID}
+                    refreshRecipes={refreshRecipes} setRefreshRecipes={setRefreshRecipes} />
             } else {
-                return <RecipeDisplayPane activeRecipe={activeRecipe} setEditMode={setEditMode} />
+                return <RecipeDisplayPane activeRecipe={activeRecipe} setEditMode={setEditMode}
+                    activeRecipeID={activeRecipeID} setActiveRecipeID={setActiveRecipeID}
+                    refreshRecipes={refreshRecipes} setRefreshRecipes={setRefreshRecipes} />
             }
         }
 
-        function RecipeEditPane({activeRecipe, creatingRecipe, setEditMode, setCreatingRecipe, setActiveRecipe}) {
-            // Create a handler for the cancel button
-            function handleCancelButton() {
-                setEditMode(false);
-                setCreatingRecipe(false);
-            }
-
-            // Create a handler for the save button
-            function handleSaveButton() {
-                // TODO PUT or POST activeRecipe depending on whether we're creating or editing
-                setEditMode(false);
-                setCreatingRecipe(false);
-            }
-
+        function RecipeEditPane({ activeRecipe, setActiveRecipe, setActiveRecipeID, setEditMode, refreshRecipes, setRefreshRecipes }) {
             // Create a handler for disabling newlines in fields where we don't want those
             // (instead, we'd like to stop editing when the user hits enter)
-            function handleKeyDown(event) {
+            function handleBlurOnEnter(event) {
                 if (event.key === "Enter") {
                     event.preventDefault();
                     event.target.blur();
                 }
             }
 
-            // Create handlers for updating various parts of the recipe
-            function handleNameChange(event) {
-                activeRecipe.Name = event.target.innerText;
+            function handleRemoveTag(event) {
+                // Remove the tag
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Tags = activeRecipe.Tags.filter((tag) => tag !== event.target.id)
+                setActiveRecipe(activeRecipe);
+            }
+
+            function handleEditTagOnBlur(event) {
+                // If the new tag is blank, remove it
+                const newTag = HtmlSanitizer.SanitizeHtml(event.target.innerText.trim());
+                if (newTag === "") {
+                    handleRemoveTag(event);
+                    return;
+                }
+
+                // Update the tag in the recipe
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Tags = activeRecipe.Tags.map((tag) => {
+                    if (tag === event.target.id) {
+                        return newTag;
+                    }
+                    return tag;
+                });
+                setActiveRecipe(activeRecipe);
+            }
+
+            function handleAddTagOnBlur(event) {
+                // If the new tag is blank, remove it
+                const newTag = HtmlSanitizer.SanitizeHtml(event.target.innerText.trim());
+                if (newTag === "") {
+                    handleRemoveTag(event);
+                    event.target.innerText = "+ Add tag";
+                    return;
+                }
+
+                // Reset to the placeholder
+                event.target.innerText = "+ Add tag";
+
+                // Update the tag in the recipe
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Tags = [...activeRecipe.Tags, newTag];
+                setActiveRecipe(activeRecipe);
+            }
+
+            function handleEditTagKeyDown(event) {
+                // If the user hits escape or enter, cancel editing the tag
+                if (event.key === "Escape" || event.key === "Enter") {
+                    event.preventDefault();
+                    event.target.blur();
+                }
             }
             
-            function handleTagChange(event) {
-                // Update tags by splitting along commas, trimming whitespace, and removing empty strings
-                activeRecipe.Tags = event.target.innerText.split(",").map((tag) => tag.trim()).filter((tag) => tag.length > 0);
-                setActiveRecipe(activeRecipe);
-
-                // TODO make the UX better here
+            function handleAddTagKeyDown(event) {
+                // If the user hits escape, cancel editing the tag
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.target.innerText = "";
+                    event.target.blur();
+                } else if (event.key === "Enter") {
+                    // If the user hits enter, add the tag
+                    event.preventDefault();
+                    event.target.blur();
+                }
             }
 
-            return <div>
-                <div class="mt-3 mb-3">
-                    <h2 contentEditable={true} onInput={handleNameChange} onKeyDown={handleKeyDown}>
-                        {activeRecipe.Name}
-                    </h2>
-                    <p contentEditable={true} onInput={handleTagChange} onKeyDown={handleKeyDown}>
-                        {activeRecipe.Tags.length > 0 ? activeRecipe.Tags.join(", ") + ", " : "Enter comma-separated tags, "}
-                    </p>
+            // Create a handler for adding ingredients
+            function handleAddIngredient(event) {
+                // Add the ingredient to the recipe
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Ingredients = [...activeRecipe.Ingredients, { Name: "", Quantity: "", Unit: "" }];
+                setActiveRecipe(activeRecipe);
+            }
+
+            // Create a function to update ingredients
+            function handleUpdateIngredient(event, index, field) {
+                // Update the ingredient
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Ingredients[index][field] = HtmlSanitizer.SanitizeHtml(event.target.value);
+                setActiveRecipe(activeRecipe);
+            }
+
+            function handleIngredientKeydown(event, index) {
+                // If the user hits enter, focus on the next ingredient
+                if (event.key === "Enter") {
+                    event.preventDefault();
+
+                    // If this is the last ingredient, add a new ingredient
+                    if (index === activeRecipe.Ingredients.length - 1) {
+                        event.target.blur();
+
+                        // Add the ingredient after the current event loop
+                        // This is necessary because the blur event will fire before the
+                        // enter event, and we want to wait until after the blur event
+                        // to add the ingredient
+                        setTimeout(() => {
+                            handleAddIngredient(event);
+                        }, 0);
+                    } else {
+                        // Focus on the next step
+                        const newStep = document.getElementById("ingredient-unit-" + (index + 1));
+                        newStep.focus();
+                    }
+                }
+            }
+
+            // Create a handler for removing ingredients
+            function handleRemoveIngredient(event, index) {
+                // Remove the ingredient
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Ingredients = activeRecipe.Ingredients.filter((ingredient, i) => i !== index);
+                setActiveRecipe(activeRecipe);
+            }
+
+            // Create a handler for adding steps
+            function handleAddStep(event) {
+                // Add the step to the recipe
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Steps = [...activeRecipe.Steps, ""];
+                setActiveRecipe(activeRecipe);
+            }
+
+            // Create a function to update steps
+            function handleUpdateStep(event, index) {
+                // Update the step
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Steps[index] = HtmlSanitizer.SanitizeHtml(event.target.value);
+                setActiveRecipe(activeRecipe);
+            }
+
+            function handleStepKeydown(event, index) {
+                // If the user hits enter, focus on the next step
+                if (event.key === "Enter") {
+                    event.preventDefault();
+
+                    // If this is the last step, add a new step
+                    if (index === activeRecipe.Steps.length - 1) {
+                        event.target.blur();
+                        handleAddStep(event);
+                    } else {
+                        // Focus on the next step
+                        const newStep = document.getElementById("step-" + (index + 1));
+                        newStep.focus();
+                    }
+                }
+            }
+
+            // Create a handler for removing steps
+            function handleRemoveStep(event, index) {
+                // Remove the step
+                activeRecipe = Object.assign({}, activeRecipe);
+                activeRecipe.Steps = activeRecipe.Steps.filter((ingredient, i) => i !== index);
+                setActiveRecipe(activeRecipe);
+            }
+
+            // Create a handler for the cancel button
+            function handleCancelButton() {
+                setEditMode(false);
+                setRefreshRecipes(!refreshRecipes);
+            }
+
+            // Create a handler for the save button
+            function handleSubmit(event) {
+                // Prevent the form from submitting
+                event.preventDefault();
+
+                // Update the active recipe to reflect the form contents
+                activeRecipe = Object.assign({}, activeRecipe);
+
+                // Make sure the activeRecipe tags match those input by the user
+                // (which are all in spans with class tag-text)
+                const tagSpans = document.getElementsByClassName("tag-text");
+                // Filter out any blank tags or the "+ Add tag" span (if not edited)
+                const newTags = Array.from(tagSpans).filter(
+                    (span) => span.innerText.trim() !== "" && span.innerText.trim() !== "+ Add tag"
+                )
+                activeRecipe.Tags = newTags.map(
+                    (span) => HtmlSanitizer.SanitizeHtml(span.innerText.trim())
+                );
+
+                // Parse the name
+                activeRecipe.Name = HtmlSanitizer.SanitizeHtml(document.getElementById("name").value);
+
+                // Parse the author
+                activeRecipe.Author = HtmlSanitizer.SanitizeHtml(document.getElementById("author").value);
+
+                // Parse the ingredients
+                const ingredient_rows = Array.from(document.getElementsByClassName("ingredient-row")).filter(
+                    (row) => row.getElementsByClassName("ingredient-name")[0].value !== ""
+                );
+                activeRecipe.Ingredients = ingredient_rows.map((ingredient) => {
+                    return {
+                        Name: HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-name")[0].value),
+                        Quantity: Number(HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-quantity")[0].value)),
+                        Unit: HtmlSanitizer.SanitizeHtml(ingredient.getElementsByClassName("ingredient-unit")[0].value),
+                    }
+                });
+
+                // Parse the steps, sorted by the index in the key property
+                activeRecipe.Steps = Array.from(document.getElementsByClassName("step-row")).sort(
+                    (a, b) => a.key - b.key
+                ).filter(
+                    (step) => step.getElementsByClassName("step-text")[0].value !== ""
+                ).map((step) => {
+                    return HtmlSanitizer.SanitizeHtml(step.getElementsByClassName("step-text")[0].value);
+                });
+
+                // POST or PUT activeRecipe depending on whether we're creating or editing
+                if (activeRecipe.ID === "") {
+                    // POST the recipe
+                    fetch("/api/recipes", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(activeRecipe),
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            // Update the active recipe with the new ID
+                            setActiveRecipeID(data.ID);
+                        });
+                } else {
+                    // PUT the recipe
+                    fetch("/api/recipes/id/" + activeRecipe.ID, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(activeRecipe),
+                    });
+                }
+
+                // End editing mode
+                setEditMode(false);
+
+                // Refresh the recipes list
+                setRefreshRecipes(!refreshRecipes);
+            }
+
+            return <form onSubmit={handleSubmit} className="mt-3">
+                <div class="form-group mt-3 mb-3">
+                    <input type="text" className="form-control" id="name"
+                        placeholder="Enter recipe name" defaultValue={activeRecipe.Name}
+                        required={true} onKeyDown={handleBlurOnEnter}/>
+                </div>
+                <div class="form-group mt-3 mb-3">
+                    <input type="text" className="form-control" id="author"
+                        placeholder="Enter author" defaultValue={activeRecipe.Author}
+                        required={true} onKeyDown={handleBlurOnEnter}/>
+                </div>
+                <div class="form-group">
                     {activeRecipe.Tags.map((tag) => (
                         <span
                             key={tag}
-                            className="badge badge-pill badge-light ml-3"
+                            className="badge badge-pill badge-light ml-1 text-editable"
+                            id={tag}
                         >
-                            {tag}
+                            <span className="mr-1 t-weight-bold text-primary"
+                                id={tag} onClick={handleRemoveTag}>
+                                &times;
+                            </span>
+                            <span id={tag} className="tag-text" contentEditable={true}
+                                onBlur={handleEditTagOnBlur} onKeyDown={handleEditTagKeyDown}>
+                                {tag}
+                            </span>
                         </span>
                     ))}
+                    <span
+                        key="addTag"
+                        className="badge badge-pill badge-light ml-1 text-editable tag-text"
+                        contentEditable={true}
+                        onKeyDown={handleAddTagKeyDown}
+                        onFocus={(event) => event.target.innerText = " "}
+                        onBlur={handleAddTagOnBlur}
+                    >
+                        + Add tag
+                    </span>
                 </div>
-                <div>
+                <div class="form-group">
                     <h3>Ingredients</h3>
-                    <ul>
-                        {activeRecipe.Ingredients.map((ingredient) => (
-                            <li key={ingredient.Name}>
-                                {ingredient.Name} - {ingredient.Quantity}
-                            </li>
-                        ))}
-                    </ul>
+                    {activeRecipe.Ingredients.map((ingredient, index) => (
+                        <div className="form-group form-inline ingredient-row" key={ingredient.Name}>
+                            <span className="t-weight-bold badge badge-secondary col-md-1"
+                                id={ingredient.Name} onClick={(event) => handleRemoveIngredient(event, index)}>
+                                &times;
+                            </span>
+                            <input type="number" className="form-control col-md-2 ingredient-quantity"
+                                id={"ingredient-unit-" + index}
+                                placeholder="#" defaultValue={ingredient.Quantity}
+                                onKeyDown={(event) => handleIngredientKeydown(event, index)}
+                                onBlur={(event) => handleUpdateIngredient(event, index, "Quantity")}
+                                autoFocus={index === activeRecipe.Ingredients.length - 1 && ingredient.Name === ""} />
+                            <input type="text" className="form-control col-md-3 ingredient-unit"
+                                placeholder="Unit" defaultValue={ingredient.Unit}
+                                onKeyDown={(event) => handleIngredientKeydown(event, index)}
+                                onBlur={(event) => handleUpdateIngredient(event, index, "Unit")} />
+                            <input type="text" className="form-control col-md-6 ingredient-name"
+                                placeholder="Name" defaultValue={ingredient.Name}
+                                onKeyDown={(event) => handleIngredientKeydown(event, index)}
+                                onBlur={(event) => handleUpdateIngredient(event, index, "Name")} />
+                        </div>
+                    ))}
+                    <div className="form-group form-inline" key="new-ingredient">
+                        <span className="t-weight-bold badge badge-secondary col-md-4"
+                            onClick={handleAddIngredient}>+ Add ingredient</span>
+                    </div>
                 </div>
-                <div>
-                    <h3>Instructions</h3>
-                    <ol>
-                        {activeRecipe.Steps.map((instruction) => (
-                            <li key={instruction}>{instruction}</li>
-                        ))}
-                    </ol>
+                <div class="form-group">
+                    <h3>Steps</h3>
+                    {activeRecipe.Steps.map((step, index) => (
+                        <div className="form-group form-inline step-row" key={step}>
+                            <span className="t-weight-bold badge badge-secondary col-md-1"
+                                id={step} onClick={(event) => handleRemoveStep(event, index)}>
+                                &times;
+                            </span>
+                            <textarea className="form-control rounded col-md-11 step-text"
+                                key={index}
+                                id={"step-" + index}
+                                placeholder="Example step" defaultValue={step}
+                                onKeyDown={(event) => handleStepKeydown(event, index)}
+                                onBlur={(event) => handleUpdateStep(event, index)}
+                                autoFocus={index === activeRecipe.Steps.length - 1 && step === ""}
+                                style={{ width: "100%" }} />
+                        </div>
+                    ))}
+                    <div className="form-group form-inline" key="new-step">
+                        <span className="t-weight-bold badge badge-secondary col-md-4"
+                            onClick={handleAddStep}>+ Add step</span>
+                    </div>
                 </div>
-                <div>
-                    <button type="button" onClick={handleSaveButton} class="btn btn-primary mb-3 mr-1">{creatingRecipe ? "Create" : "Save"} Recipe</button>
-                    <button type="button" onClick={handleCancelButton} class="btn btn-secondary mb-3 mr-1">Cancel</button>
-                </div>
-            </div>
+                <button type="submit" className="btn btn-primary mb-3 mr-1">{activeRecipe.ID == "" ? "Create" : "Save"}</button>
+                <button className="btn btn-secondary mb-3 mr-1" onClick={handleCancelButton}>Cancel</button>
+            </form>
         }
 
-        function RecipeDisplayPane({ activeRecipe, setEditMode }) {
+        function RecipeDisplayPane({ activeRecipe, setActiveRecipe, activeRecipeID, setActiveRecipeID, setEditMode, refreshRecipes, setRefreshRecipes }) {
             // If no recipe is selected, render an empty div
-            if (activeRecipe.Name === undefined) {
+            if (activeRecipe === {} || activeRecipe === null || activeRecipe.ID === "") {
                 return <div class="mt-3 mb-3"></div>
             }
 
@@ -343,13 +753,66 @@
                 setEditMode(true);
             }
 
+            // Create a handler for the new comment form
+            function handleAddNewComment(event) {
+                event.preventDefault();
+
+                // Get the author and comment and make a new comment object
+                const author = event.target.elements.author.value;
+                const comment = event.target.elements.comment.value;
+                const commentObj = {
+                    Author: author,
+                    Comment: comment,
+                    Date: new Date(),
+                }
+
+                alert("feature temporarily disabled")
+
+                // TODO make an endpoint for adding a comment to a recipe
+                // // PUT the recipe to update it
+                // fetch("/api/recipes/id/" + activeRecipe.ID, {
+                //     method: "PUT",
+                //     headers: {
+                //         "Content-Type": "application/json",
+                //     },
+                //     body: JSON.stringify(activeRecipe),
+                // });
+
+                // Clear the form text
+                event.target.elements.author.value = "";
+                event.target.elements.comment.value = "";
+
+                // Refresh
+                setRefreshRecipes(!refreshRecipes);
+            }
+
+            // Create a handler for the delete button
+            function handleDeleteButton() {
+                alert("feature temporarily disabled")
+                // TODO re-enable this when I have better logging to undo it.
+                // // DELETE the recipe
+                // fetch("/api/recipes/id/" + activeRecipe.ID, {
+                //     method: "DELETE",
+                //     headers: {
+                //         "Content-Type": "application/json",
+                //     },
+                // });
+
+                // Refresh
+                setActiveRecipeID("");
+                setRefreshRecipes(!refreshRecipes);
+            }
+
             return <div>
                 <div class="mt-3 mb-3">
-                    <h2>{activeRecipe.Name}</h2>
+                    <div class="d-flex justify-content-between">
+                        <span class="h2">{activeRecipe.Name}</span>
+                        <span class="h4"><span class="text-muted">by </span>{activeRecipe.Author}</span>
+                    </div>
                     {activeRecipe.Tags.map((tag) => (
                         <span
                             key={tag}
-                            className="badge badge-pill badge-light ml-3"
+                            className="badge badge-pill badge-light ml-1"
                         >
                             {tag}
                         </span>
@@ -360,7 +823,7 @@
                     <ul>
                         {activeRecipe.Ingredients.map((ingredient) => (
                             <li key={ingredient.Name}>
-                                {ingredient.Name} - {ingredient.Quantity}
+                                {ingredient.Quantity === 0 ? "" : ingredient.Quantity} {ingredient.Unit} {ingredient.Name}
                             </li>
                         ))}
                     </ul>
@@ -375,7 +838,7 @@
                 </div>
                 <div>
                     <button type="button" onClick={handleEditButton} class="btn btn-secondary mb-3 mr-1">Edit Recipe</button>
-                    <button type="button" class="btn btn-danger mb-3 mr-1">Delete Recipe</button>
+                    <button type="button" onClick={handleDeleteButton} class="btn btn-warning mb-3 mr-1">Delete Recipe</button>
                 </div>
                 <div>
                     <h3>Comments</h3>
@@ -383,14 +846,37 @@
                         {activeRecipe.Comments.map((comment) => (
                             <div class="card mb-2 mr-2">
                                 <div class="card-body">
-                                    {comment.comment}
+                                    {comment.Comment}
                                 </div>
                                 <div class="card-footer">
-                                    <small class="text-muted">By {comment.author} on {comment.date}</small>
+                                    <small class="text-muted">By {comment.Author} on {
+                                        new Intl.DateTimeFormat('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric',
+                                        }).format(new Date(comment.Date))
+                                    }</small>
                                 </div>
                             </div>
                         ))}
                     </div>
+                    <form onSubmit={handleAddNewComment} className="mt-3">
+                        <div class="form-group">
+                            <div className="form-row">
+                                <textarea
+                                    id="comment"
+                                    name="comment"
+                                    class="form-control mb-1"
+                                    placeholder="Add a comment"
+                                    required
+                                />
+                            </div>
+                            <div className="form-row">
+                                <input class="form-control col" id="author" required placeholder="Your name" />
+                                <button type="submit" className="btn btn-primary ml-1 col-2">Submit</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         }

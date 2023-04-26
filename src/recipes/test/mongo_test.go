@@ -326,7 +326,7 @@ func TestGetRecipesByTags(t *testing.T) {
 }
 
 // TestSearchRecipes tests the SearchRecipes function
-func TestSearchRecipes(t *testing.T) {
+func TestSearchRecipesQueryOnly(t *testing.T) {
 	// Set up the test database
 	err := setupTestDB()
 	if err != nil {
@@ -352,43 +352,165 @@ func TestSearchRecipes(t *testing.T) {
 		t.Fatalf("Failed to add test recipe: %v", err)
 	}
 
-	// Search for recipes with the query "recipe" with no tags (should match both)
+	// Search for recipes with the query "recipe" with no tags or authors (should match both)
 	query := "recipe"
 	tags := []string{}
-	recipes, err := recipeManager.SearchRecipes(query, tags)
+	authors := []string{}
+	recipe_summaries, err := recipeManager.SearchRecipes(query, tags, authors)
 	if err != nil {
-		t.Fatalf("Failed to search for recipes (query %v, tags %v): %v", query, tags, err)
+		t.Fatalf("Failed to search for recipes (query %v, tags %v, authors %v): %v", query, tags, authors, err)
 	}
 
 	// This should retrieve both recipes
-	if len(recipes) != 2 {
-		t.Fatalf("Incorrect number of recipes retrieved (query %v, tags %v): "+
-			"expected %v, got %v", query, tags, 2, len(recipes))
+	if len(recipe_summaries) != 2 {
+		t.Fatalf("Incorrect number of recipes retrieved (query %v, tags %v, authors %v): "+
+			"expected %v, got %v", query, tags, authors, 2, len(recipe_summaries))
 	}
-	objID1, _ := primitive.ObjectIDFromHex(recipeID1)
-	objID2, _ := primitive.ObjectIDFromHex(recipeID2)
-	if recipes[0].ID != objID1 && recipes[1].ID != objID1 {
-		t.Fatalf("Test recipe 1 was not retrieved (query %v, tags %v)", query, tags)
+	if recipe_summaries[0].ID != recipeID1 && recipe_summaries[1].ID != recipeID1 {
+		t.Fatalf("Test recipe 1 was not retrieved (query %v, tags %v, authors %v)", query, tags, authors)
 	}
-	if recipes[0].ID != objID2 && recipes[1].ID != objID2 {
-		t.Fatalf("Test recipe 2 was not retrieved (query %v, tags %v)", query, tags)
+	if recipe_summaries[0].ID != recipeID2 && recipe_summaries[1].ID != recipeID2 {
+		t.Fatalf("Test recipe 2 was not retrieved (query %v, tags %v, authors %v)", query, tags, authors)
+	}
+}
+
+func TestSearchRecipesQueryAndTags(t *testing.T) {
+	// Set up the test database
+	err := setupTestDB()
+	if err != nil {
+		t.Fatalf("Failed to set up test database: %v", err)
+	}
+	defer teardownTestDB()
+
+	// Create a new recipe manager
+	recipeManager, err := recipes.CreateMongoRecipeManager(testURI, testDBName, "recipes")
+	if err != nil {
+		t.Fatalf("Failed to create recipe manager: %v", err)
+	}
+
+	// Add the first test recipe
+	recipeID1, err := recipeManager.AddRecipe(testRecipe1)
+	if err != nil {
+		t.Fatalf("Failed to add test recipe: %v", err)
+	}
+
+	// Add the second test recipe
+	_, err = recipeManager.AddRecipe(testRecipe2)
+	if err != nil {
+		t.Fatalf("Failed to add test recipe: %v", err)
 	}
 
 	// Now filter the search to only recipes with the tag "Test Tag 2" (should only
 	// match the first recipe)
-	tags = []string{"Test Tag 2"}
-	recipes, err = recipeManager.SearchRecipes(query, tags)
+	query := "recipe"
+	tags := []string{"Test Tag 2"}
+	authors := []string{}
+	recipe_summaries, err := recipeManager.SearchRecipes(query, tags, authors)
 	if err != nil {
-		t.Fatalf("Failed to search for recipes (query %v, tags %v): %v", query, tags, err)
+		t.Fatalf("Failed to search for recipes (query %v, tags %v, authors %v): %v", query, tags, authors, err)
 	}
 
 	// This should retrieve only one recipe
-	if len(recipes) != 1 {
-		t.Fatalf("Incorrect number of recipes retrieved (query %v, tags %v): "+
-			"expected %v, got %v", query, tags, 1, len(recipes))
+	if len(recipe_summaries) != 1 {
+		t.Fatalf("Incorrect number of recipes retrieved (query %v, tags %v, authors %v): "+
+			"expected %v, got %v", query, tags, authors, 1, len(recipe_summaries))
 	}
-	if recipes[0].ID != objID1 {
-		t.Fatalf("Test recipe 1 was not retrieved (query %v, tags %v)", query, tags)
+	if recipe_summaries[0].ID != recipeID1 {
+		t.Fatalf("Test recipe 1 was not retrieved (query %v, tags %v, authors %v)", query, tags, authors)
+	}
+}
+
+func TestSearchRecipesAuthors(t *testing.T) {
+	// Set up the test database
+	err := setupTestDB()
+	if err != nil {
+		t.Fatalf("Failed to set up test database: %v", err)
+	}
+	defer teardownTestDB()
+
+	// Create a new recipe manager
+	recipeManager, err := recipes.CreateMongoRecipeManager(testURI, testDBName, "recipes")
+	if err != nil {
+		t.Fatalf("Failed to create recipe manager: %v", err)
+	}
+
+	// Add the first test recipe
+	_, err = recipeManager.AddRecipe(testRecipe1)
+	if err != nil {
+		t.Fatalf("Failed to add test recipe: %v", err)
+	}
+
+	// Add the second test recipe
+	recipeID2, err := recipeManager.AddRecipe(testRecipe2)
+	if err != nil {
+		t.Fatalf("Failed to add test recipe: %v", err)
+	}
+
+	// Now filter the search to only recipes with the author "Test Author 2" (should only
+	// match the second recipe)
+	query := "recipe"
+	tags := []string{}
+	authors := []string{"Test Author 2"}
+	recipe_summaries, err := recipeManager.SearchRecipes(query, tags, authors)
+	if err != nil {
+		t.Fatalf("Failed to search for recipes (query %v, tags %v, authors %v): %v", query, tags, authors, err)
+	}
+
+	// This should retrieve only one recipe
+	if len(recipe_summaries) != 1 {
+		t.Fatalf("Incorrect number of recipes retrieved (query %v, tags %v, authors %v): "+
+			"expected %v, got %v", query, tags, authors, 1, len(recipe_summaries))
+	}
+	if recipe_summaries[0].ID != recipeID2 {
+		t.Fatalf("Test recipe 2 was not retrieved (query %v, tags %v, authors %v)", query, tags, authors)
+	}
+}
+
+func TestSearchRecipesNoFilters(t *testing.T) {
+	// Set up the test database
+	err := setupTestDB()
+	if err != nil {
+		t.Fatalf("Failed to set up test database: %v", err)
+	}
+	defer teardownTestDB()
+
+	// Create a new recipe manager
+	recipeManager, err := recipes.CreateMongoRecipeManager(testURI, testDBName, "recipes")
+	if err != nil {
+		t.Fatalf("Failed to create recipe manager: %v", err)
+	}
+
+	// Add the first test recipe
+	recipeID1, err := recipeManager.AddRecipe(testRecipe1)
+	if err != nil {
+		t.Fatalf("Failed to add test recipe: %v", err)
+	}
+
+	// Add the second test recipe
+	recipeID2, err := recipeManager.AddRecipe(testRecipe2)
+	if err != nil {
+		t.Fatalf("Failed to add test recipe: %v", err)
+	}
+
+	// If we search with no filters, we should get both
+	query := ""
+	tags := []string{}
+	authors := []string{}
+	recipe_summaries, err := recipeManager.SearchRecipes(query, tags, authors)
+	if err != nil {
+		t.Fatalf("Failed to search for recipes (query %v, tags %v, authors %v): %v", query, tags, authors, err)
+	}
+
+	// This should retrieve both recipes
+	if len(recipe_summaries) != 2 {
+		t.Fatalf("Incorrect number of recipes retrieved (query %v, tags %v, authors %v): "+
+			"expected %v, got %v", query, tags, authors, 2, len(recipe_summaries))
+	}
+	if recipe_summaries[0].ID != recipeID1 && recipe_summaries[1].ID != recipeID1 {
+		t.Fatalf("Test recipe 1 was not retrieved (query %v, tags %v, authors %v)", query, tags, authors)
+	}
+	if recipe_summaries[0].ID != recipeID2 && recipe_summaries[1].ID != recipeID2 {
+		t.Fatalf("Test recipe 2 was not retrieved (query %v, tags %v, authors %v)", query, tags, authors)
 	}
 }
 
@@ -439,6 +561,53 @@ func TestGetTags(t *testing.T) {
 	}
 	if !isMember(tags, "Test Tag 3") {
 		t.Fatalf("Tag \"Test Tag 2\" was not retrieved, got %v", tags)
+	}
+}
+
+// TestGetTags tests the GetTags function
+func TestGetAuthors(t *testing.T) {
+	// Set up the test database
+	err := setupTestDB()
+	if err != nil {
+		t.Fatalf("Failed to set up test database: %v", err)
+	}
+	defer teardownTestDB()
+
+	// Create a new recipe manager
+	recipeManager, err := recipes.CreateMongoRecipeManager(testURI, testDBName, "recipes")
+	if err != nil {
+		t.Fatalf("Failed to create recipe manager: %v", err)
+	}
+
+	// Add the first test recipe
+	_, err = recipeManager.AddRecipe(testRecipe1)
+	if err != nil {
+		t.Fatalf("Failed to add test recipe: %v", err)
+	}
+
+	// Add the second test recipe
+	_, err = recipeManager.AddRecipe(testRecipe2)
+	if err != nil {
+		t.Fatalf("Failed to add test recipe: %v", err)
+	}
+
+	// Get the tags
+	authors, err := recipeManager.GetAuthors()
+	if err != nil {
+		t.Fatalf("Failed to get authors: %v", err)
+	}
+
+	// There should be 2 authors
+	if len(authors) != 2 {
+		t.Fatalf("Incorrect number of authors retrieved: expected %v, got %v", 2, len(authors))
+	}
+
+	// The authors "Test Tag 1", "Test Tag 2", and "Test Tag 3" should all be in this slice
+	if !isMember(authors, "Test Author 1") {
+		t.Fatalf("Tag \"Test Author 1\" was not retrieved, got %v", authors)
+	}
+	if !isMember(authors, "Test Author 2") {
+		t.Fatalf("Tag \"Test Author 2\" was not retrieved, got %v", authors)
 	}
 }
 

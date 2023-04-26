@@ -7,19 +7,21 @@ var testRecipe1 = recipes.Recipe{
 	Name:        "Test Recipe",
 	Description: "This is a test recipe",
 	Ingredients: []recipes.Ingredient{
-		{Name: "Test Ingredient 1", Quantity: "1 bunch"},
-		{Name: "Test Ingredient 2", Quantity: "1 can"},
+		{Name: "Test Ingredient 1", Quantity: 1, Unit: "bunch"},
+		{Name: "Test Ingredient 2", Quantity: 1, Unit: "can"},
 	},
-	Steps: []string{"Test Step 1", "Test Step 2"},
-	Tags:  []string{"Test Tag 1", "Test Tag 2"},
+	Steps:  []string{"Test Step 1", "Test Step 2"},
+	Tags:   []string{"Test Tag 1", "Test Tag 2"},
+	Author: "Test Author 1",
 }
 var testRecipe2 = recipes.Recipe{
 	Name:        "Test Recipe 2",
 	Description: "This is a second test recipe",
 	Ingredients: []recipes.Ingredient{
-		{Name: "Test Ingredient 1", Quantity: "1 bundle"},
-		{Name: "Test Ingredient 3", Quantity: "2 bits"},
+		{Name: "Test Ingredient 1", Quantity: 1, Unit: "bundle"},
+		{Name: "Test Ingredient 3", Quantity: 2, Unit: "bits"},
 	},
-	Steps: []string{"Test Step 1", "Test Step 2"},
-	Tags:  []string{"Test Tag 1", "Test Tag 3"},
+	Steps:  []string{"Test Step 1", "Test Step 2"},
+	Tags:   []string{"Test Tag 1", "Test Tag 3"},
+	Author: "Test Author 2",
 }

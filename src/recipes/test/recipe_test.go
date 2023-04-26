@@ -2,8 +2,6 @@ package recipes_test
 
 import (
 	"testing"
-
-	"github.com/dawsonc/recipes/src/recipes"
 )
 
 func TestAddTagToRecipe(t *testing.T) {
@@ -56,86 +54,4 @@ func TestRemoveTagFromRecipe(t *testing.T) {
 
 	// Remove the tag again (nothing should change)
 	recipe.RemoveTagFromRecipe(tag_to_remove)
-}
-
-// TestMergeIngredientQuantities tests the MergeIngredientQuantities function
-func TestMergeIngredientQuantities(t *testing.T) {
-	// Make some test ingredients
-	same_ingredients := []recipes.Ingredient{
-		{
-			Name:     "Test Ingredient",
-			Quantity: "1/2 cup",
-		},
-		{
-			Name:     "Test Ingredient",
-			Quantity: "1/4 cup",
-		},
-	}
-
-	different_ingredients := []recipes.Ingredient{
-		{
-			Name:     "Test Ingredient",
-			Quantity: "1/2 cup",
-		},
-		{
-			Name:     "Test Ingredient 2",
-			Quantity: "1/4 cup",
-		},
-	}
-
-	// Merging the same ingredients should be successful
-	merged, err := recipes.MergeIngredientQuantities(same_ingredients)
-	if err != nil {
-		t.Errorf("Error merging ingredients: %v", err)
-	}
-
-	// Make sure the ingredients were merged correctly
-	expected := "1/2 cup, 1/4 cup"
-	if merged.Quantity != expected {
-		t.Errorf("Expected merged quantity %s, got %s", expected, merged.Quantity)
-	}
-
-	// Merging different ingredients should fail
-	_, err = recipes.MergeIngredientQuantities(different_ingredients)
-	if err == nil {
-		t.Errorf("Merging different ingredients should fail")
-	}
-}
-
-// TestMergeIngredients tests the MergeIngredients function
-func TestMergeIngredients(t *testing.T) {
-	// Make some test ingredients
-	ingredients := []recipes.Ingredient{
-		{
-			Name:     "Test Ingredient",
-			Quantity: "1/2 cup",
-		},
-		{
-			Name:     "Test Ingredient",
-			Quantity: "1/4 cup",
-		},
-		{
-			Name:     "Test Ingredient 2",
-			Quantity: "1/4 cup",
-		},
-	}
-
-	// Merge the ingredients
-	merged_ingredients := recipes.MergeIngredients(ingredients)
-
-	// Make sure the ingredients were merged correctly
-	if len(merged_ingredients) != 2 {
-		t.Errorf("Expected 2 merged ingredients, got %d", len(merged_ingredients))
-	}
-
-	// The merged ingredients should be have the correct names and quantities
-	expected := map[string]string{
-		"Test Ingredient":   "1/2 cup, 1/4 cup",
-		"Test Ingredient 2": "1/4 cup",
-	}
-	for _, ingredient := range merged_ingredients {
-		if ingredient.Quantity != expected[ingredient.Name] {
-			t.Errorf("Expected quantity %s for ingredient %s, got %s", expected[ingredient.Name], ingredient.Name, ingredient.Quantity)
-		}
-	}
 }
