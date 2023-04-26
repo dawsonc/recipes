@@ -35,6 +35,11 @@ func main() {
 		c.Redirect(301, "/app")
 	})
 
+	// Re-direct favicon
+	router.GET("/favicon.ico", func(c *gin.Context) {
+		c.Redirect(301, "/app/favicon.ico")
+	})
+
 	// Run the server
 	router.Run(":8080")
 }
