@@ -314,7 +314,7 @@ func (m *MongoRecipeManager) SearchRecipes(
 			tags_filter,
 			authors_filter,
 			{"$or": []bson.M{
-				{"title": query_filter},
+				{"name": query_filter},
 				{"description": query_filter},
 				{"comments": bson.M{"$elemMatch": bson.M{"comment": query_filter}}},
 			}},

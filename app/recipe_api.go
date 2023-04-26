@@ -17,7 +17,7 @@ func AddRecipesAPI(router *gin.Engine, recipe_manager recipes.RecipeManager) {
 		// GET /api/recipes - get a list of recipes, possibly with filters
 		// e.g. /api/recipes?tags=tag1,tag2
 		// e.g. /api/recipes?q=search_term&tags=tag1,tag2&authors=author1,author2
-		recipesAPI.GET("/", func(c *gin.Context) {
+		recipesAPI.GET("/search", func(c *gin.Context) {
 			// Allow optional query strings
 			tags := strings.Split(c.Query("tags"), ",")
 			authors := strings.Split(c.Query("authors"), ",")

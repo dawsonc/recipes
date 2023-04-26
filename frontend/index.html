@@ -66,11 +66,11 @@
             // Fetch the recipe list from the server on load and again when
             // either the active tags or search query change
             React.useEffect(() => {
-                fetch('/api/recipes?tags=' + activeTags.join(',')
+                fetch('/api/recipes/search?tags=' + activeTags.join(',')
                     + '&q=' + HtmlSanitizer.SanitizeHtml(searchQuery)
                     + "&authors=" + activeAuthors.join(','))
                     .then(response => response.json())
-                    .then(data => setRecipeList("error" in data ? [] : data));
+                    .then(data => setRecipeList(data === null || "error" in data ? [] : data));
             }, [activeTags, activeAuthors, searchQuery, refreshRecipes]);
 
             // Also fetch a list of all tags and authors on load
@@ -83,7 +83,7 @@
             React.useEffect(() => {
                 fetch('/api/recipes/authors')
                     .then(response => response.json())
-                    .then(data => setAuthors(data === null ? [] : data));
+                    .then(data => setAuthors(data === null ? [] : data.sort()));
             }, [refreshRecipes]);
 
             // Function for setting the active search query based on form changes
@@ -157,7 +157,6 @@
             function handleClick() {
                 setActiveRecipeID(id);
             }
-            console.log(author)
 
             return <tr onClick={handleClick}>
                 <td>{name}</td>
@@ -178,6 +177,13 @@
         function RecipeList({ recipes, setActiveRecipeID, editMode }) {
             if (recipes == null || recipes.length === 0) {
                 return <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Author</th>
+                            <th scope="col">Tags</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <tr>
                             <td>No recipes found</td>
@@ -187,6 +193,13 @@
             }
 
             return <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Author</th>
+                        <th scope="col">Tags</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {recipes.map((recipe) => (
                         <RecipeRow
@@ -235,24 +248,25 @@
             // Return a span for each tag in tags
             // Active tags go first in an emphasized color
             // Inactive tags go later in light color
-            return <div>
-                {activeTags.map((tag) => (
-                    <span
-                        key={tag}
-                        className="badge badge-pill badge-primary mr-1"
-                        onClick={() => handleClickDeactivate(tag)}
-                    >
-                        {tag}
-                    </span>
-                ))}
-                {inactiveTags(tags, activeTags).map((tag) => (
-                    <span
-                        key={tag}
-                        className="badge badge-pill badge-light mr-1"
-                        onClick={() => handleClickActivate(tag)}
-                    >
-                        {tag}
-                    </span>
+            return <div className="border rounded">
+                <span className="badge text-secondary mt-2 ml-2 mr-1 mb-2">Tags:</span>
+                {tags.map((tag) => (
+                    activeTags.includes(tag) ?
+                        <span
+                            key={tag}
+                            className="badge badge-pill badge-primary mr-1"
+                            onClick={() => handleClickDeactivate(tag)}
+                        >
+                            {tag}
+                        </span>
+                        :
+                        <span
+                            key={tag}
+                            className="badge badge-pill badge-light mr-1"
+                            onClick={() => handleClickActivate(tag)}
+                        >
+                            {tag}
+                        </span>
                 ))}
                 {activeTags.length > 0 ? <span
                     key="clear-tags"
@@ -298,24 +312,25 @@
             // Return a span for each author in authors
             // Active authors go first in an emphasized color
             // Inactive authors go later in light color
-            return <div>
-                {activeAuthors.map((author) => (
-                    <span
-                        key={author}
-                        className="badge badge-pill badge-primary mr-1"
-                        onClick={() => handleClickDeactivate(author)}
-                    >
-                        {author}
-                    </span>
-                ))}
-                {inactiveAuthors(authors, activeAuthors).map((author) => (
-                    <span
-                        key={author}
-                        className="badge badge-pill badge-light mr-1"
-                        onClick={() => handleClickActivate(author)}
-                    >
-                        {author}
-                    </span>
+            return <div className="border rounded">
+                <span className="badge text-secondary mt-2 ml-2 mr-1 mb-2">Authors:</span>
+                {authors.map((author) => (
+                    activeAuthors.includes(author) ?
+                        <span
+                            key={author}
+                            className="badge badge-pill badge-primary mr-1"
+                            onClick={() => handleClickDeactivate(author)}
+                        >
+                            {author}
+                        </span>
+                        :
+                        <span
+                            key={author}
+                            className="badge badge-pill badge-light mr-1"
+                            onClick={() => handleClickActivate(author)}
+                        >
+                            {author}
+                        </span>
                 ))}
                 {activeAuthors.length > 0 ? <span
                     key="clear-authors"
@@ -749,6 +764,8 @@
                     Date: new Date(),
                 }
 
+                alert("feature temporarily disabled")
+
                 // TODO make an endpoint for adding a comment to a recipe
                 // // PUT the recipe to update it
                 // fetch("/api/recipes/id/" + activeRecipe.ID, {
@@ -843,17 +860,20 @@
                     </div>
                     <form onSubmit={handleAddNewComment} className="mt-3">
                         <div class="form-group">
-                            <label htmlFor="comment">Add a comment:</label>
-                            <textarea
-                                id="comment"
-                                name="comment"
-                                class="form-control"
-                                placeholder="Comment"
-                                required
-                            />
-                            <input class="form-control" id="author" placeholder="Author" />
+                            <div className="form-row">
+                                <textarea
+                                    id="comment"
+                                    name="comment"
+                                    class="form-control mb-1"
+                                    placeholder="Add a comment"
+                                    required
+                                />
+                            </div>
+                            <div className="form-row">
+                                <input class="form-control col" id="author" required placeholder="Your name" />
+                                <button type="submit" className="btn btn-primary ml-1 col-2">Submit</button>
+                            </div>
                         </div>
-                        <button type="submit" className="btn btn-primary mb-3">Submit</button>
                     </form>
                 </div>
             </div>
